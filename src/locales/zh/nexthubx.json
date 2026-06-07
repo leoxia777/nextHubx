@@ -1,13 +1,13 @@
 {
-  "brand": "nextHubx",
+  "brand": "NextHubX",
   "nav": {
     "activate": "激活",
     "connect": "连接",
     "account": "账号"
   },
   "activate": {
-    "title": "激活 nextHubx",
-    "subtitle": "输入您的激活码以连接到 nextHubx 网络",
+    "title": "激活 NextHubX",
+    "subtitle": "输入您的激活码以连接到 NextHubX 网络",
     "tokenLabel": "激活码",
     "tokenPlaceholder": "请输入激活码",
     "submit": "激活",
@@ -36,7 +36,7 @@
     "service": {
       "preparingTitle": "正在准备网络服务",
       "guideTitle": "需要安装网络服务",
-      "guideBody": "nextHubx 需要安装一个后台网络服务以建立全局代理网卡。安装时系统会请求管理员权限（Windows 弹出 UAC / macOS 输入密码），整个过程仅需一次。",
+      "guideBody": "NextHubX 需要安装一个后台网络服务以建立全局代理网卡。安装时系统会请求管理员权限（Windows 弹出 UAC / macOS 输入密码），整个过程仅需一次。",
       "install": "授权并安装",
       "installing": "正在安装服务…",
       "retry": "重试",
@@ -74,5 +74,11 @@
     "configUpdated": "代理配置已更新",
     "revokedNotice": "您的席位已失效，请重新激活",
     "failed": "同步失败，将在稍后重试"
+  },
+  "clashVergeConflict": {
+    "title": "检测到 Clash Verge 冲突",
+    "runningBody": "检测到 Clash Verge 正在运行，会与 NextHubX 争用同一网络服务、导致连接互相断开，请先关闭 Clash Verge。",
+    "appearedBody": "Clash Verge 已启动，会断开你的连接，请关闭它。",
+    "confirm": "我知道了"
   }
 }

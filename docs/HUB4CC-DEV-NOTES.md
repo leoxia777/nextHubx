@@ -198,3 +198,73 @@ M2 纯前端 + 配置,三绿(typecheck/lint/web:build)。`tauri build` / `tauri 
 
 **未做 / 待真机**:Service 安装 / TUN / 提权真机验证(K17,需 Rust+sidecar);app 级启动 gate(K13);
 凭证加密(K15);同步退避(K16)。
+
+---
+
+## 原生构建验证(M-Build,2026-06-07,macOS arm64)
+
+> 目标:首次真机跑通 Rust + sidecar + Tauri 整体构建,确认 M0-M3 的品牌化 Rust 改动不破坏编译。
+> **结论:`pnpm tauri build --debug` 已跑通,产出 `nextHubx.app` + `nextHubx_2.5.2_aarch64.dmg`。**
+> 唯一报错是 updater 签名(缺私钥,非构建问题),`.app` / `.dmg` 在该步之前已生成完毕。
+
+### 环境搭建结果
+| 项 | 结果 |
+|---|---|
+| Node | `fnm install 22` → v22.22.3;pnpm 11.3.0(corepack)。注意:shell 不持久,每条命令需前置 `eval "$(fnm env)"; fnm use 22`。 |
+| Rust | 之前未装(K1)。`rustup` 装好后,`rust-toolchain.toml` 自动拉 **1.95.0**(channel 锁定),`cargo 1.95.0` 可用。 |
+| sidecar | `pnpm prebuild` 一次跑通(修了 K18 后):`sidecar/verge-mihomo{,-alpha}-aarch64-apple-darwin`、`resources/clash-verge-service{,-install,-uninstall}`、Country.mmdb / geoip.dat / geosite.dat / set_dns.sh / unset_dns.sh 全部就位。 |
+
+### 构建结果
+- `pnpm run web:build`:✅(随 `beforeBuildCommand` 在 tauri build 内也跑通)。
+- Rust 编译:✅ 全过(几百 crate;本次 2m26s,部分 crate 已缓存)。产出 `target/debug/clash-verge`(arm64 Mach-O,adhoc 签名)。
+- 打包:✅ 产出
+  - `target/debug/bundle/macos/nextHubx.app`(`Contents/MacOS/` 含主二进制 + 两个 mihomo sidecar;`Contents/Resources/resources/` 含 service 三件套 + mmdb/dat + dns 脚本)。
+  - `target/debug/bundle/dmg/nextHubx_2.5.2_aarch64.dmg`(~83MB)。
+  - `nextHubx.app.tar.gz`(updater 包,已生成但签名失败,见下)。
+- Info.plist 校验:`CFBundleIdentifier=com.nexthubx.app`、`CFBundleName/DisplayName=nextHubx` —— 品牌化已正确进入 bundle。
+
+### 因品牌改动需修的构建问题
+**无。** M0-M3 的 Rust 侧品牌改动(`dirs.rs` APP_ID/BACKUP_DIR、`window.rs`/`lib.rs` 窗口标题、`schtasks.rs` 任务名、`scheme.rs`/`init.rs` deep-link scheme)全部直接编译通过,未触发任何 Rust 报错。
+
+### K18 — prebuild chmod 不兼容带空格路径(已修)
+仓库克隆路径含空格(`.../AI Startup/...`)。`scripts/prebuild.mjs` 原用 `execSync(\`chmod 755 ${path}\`)` 走 shell,空格被拆成两个参数 → `chmod: No such file`,prebuild 在下载完第一个 sidecar 后即中断。
+**修法**(纯构建脚本,不涉业务逻辑):把 4 处 `execSync('chmod 755 ...')`(行 412/428/443/560)改为 `fs.chmodSync(path, 0o755)`(与已有行 707 的 `fsp.chmod` 风格一致,天然兼容空格)。`execSync` 现仅用于无路径的 `rustc -vV`。
+- 副作用:首个 sidecar(verge-mihomo-alpha)在改前已下载但 chmod 失败,且其 hash 已入 cache → 二次 prebuild 跳过它而未补 exec 位。手动 `chmod 755` 补上即可(或 `pnpm prebuild --force`)。已补,两个 sidecar 现均为 `-rwxr-xr-x`。
+
+### K19 — tauri.macos.conf identifier 以 `.app` 结尾(警告,非阻塞)
+tauri CLI 警告:`com.nexthubx.app` 以 `.app` 结尾,与 macOS app bundle 扩展名同形,不推荐。**仅 Warn,不影响构建**,bundle 正常产出。若后续洁癖可改 identifier(但会动 APP_ID/数据目录,牵连面大,本次不动)。
+
+### K20 — updater 签名缺私钥(本次唯一报错,非构建失败)
+`tauri.conf.json`:`createUpdaterArtifacts: true` + `plugins.updater.pubkey`(沿用上游 CVR 公钥)。打包末尾对 `nextHubx.app.tar.gz` 签名时报
+`A public key has been found, but no private key. Make sure to set TAURI_SIGNING_PRIVATE_KEY`,`pnpm tauri build` 退出码 1。
+- **影响面**:仅 updater 自动更新包的签名;`.app` 与 `.dmg` 在此步之前已完整生成,可正常安装运行。
+- **原因**:本机无 CVR 上游 updater 私钥(也不该有)。
+- **解法(任一)**:① 本地验证只想跑通编译/打包时,临时把 `createUpdaterArtifacts` 设 false 或移除 updater.pubkey;② 正式发版由持私钥方设 `TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`;③ nextHubx 若要自管更新,需生成自己的 minisign 密钥对并替换 pubkey。本次未改配置(属发布流程,非构建可行性)。
+
+### 一句话结论
+**这个 app 现在能真机构建出可运行的 `.app` / `.dmg`(macOS arm64);M0-M3 的品牌化改动不破坏 Rust 编译与打包。** 仅 updater 签名因缺私钥失败,属发布流程范畴,不影响本地构建运行。Service/TUN/提权等运行时行为仍未在真机实测(K17 仍开)。
+
+## 官方 Clash Verge 冲突检测(2026-06-08)
+
+### 背景
+官方 Clash Verge(clash-verge-rev)与 NextHubX 是同源 fork,会争用同一套网络服务(TUN 网卡 / 系统代理 / 内核端口),两者同时运行会导致连接互相断开。需在启动时与运行期间检测官方版并提醒用户关闭。
+
+### 实现(只改代码,不打包)
+- **Rust(`crates/tauri-plugin-clash-verge-sysinfo`)**:
+  - `lib.rs` 新增纯函数 `detect_official_clash_verge() -> bool`,用已有 sysinfo 枚举进程,对每个进程的 `exe()` 路径 + `name()`(统一小写)做关键词匹配。
+  - `commands.rs` 新增 `#[command] detect_official_clash_verge() -> Result<bool, Error>`,在 `src-tauri/src/lib.rs` 的 `generate_handlers!` 中注册(与既有 sysinfo 命令同样无需 capability 条目,属第一方命令)。
+- **前端**:
+  - `services/cmds.ts` 加 `detectOfficialClashVerge()` invoke 封装。
+  - `hooks/use-clash-verge-conflict.ts`:启动检测一次(mode=running),并每 7 秒轮询;在官方版「从无到有」(false→true)上升沿触发(mode=appeared)。同一次出现只提示一次,关闭后需先消失再出现才会重弹。
+  - `components/layout/clash-verge-conflict-dialog.tsx`:复用 `BaseDialog` 弹提示,在 `pages/_layout.tsx` 顶层挂载一次(紧邻 `NoticeManager`)。
+  - i18n:`locales/{zh,en}/nexthubx.json` 新增 `clashVergeConflict` 段;改 JSON 后必须 `pnpm i18n:types` 重新生成 `src/types/generated/`,否则 `t()` 的字面量键类型校验报 TS2769。
+
+### 官方版识别标识 & 防误判
+- 命中即官方版:bundle id `io.github.clash-verge-rev.clash-verge-rev`、路径含 `clash verge.app`、`clash-verge-rev`(全小写匹配)。
+- **先排除自身**:进程文本若含 `com.nexthubx.app` / `nexthubx`,直接跳过 → 不会把 NextHubX 自己(`NextHubX.app` / `com.nexthubx.app`)误判成官方版。逻辑上「排除自身」优先于「命中官方」。
+
+### 校验结果(未打包)
+- `cargo check`(`src-tauri`):通过。
+- 前端三绿:`pnpm typecheck` / `pnpm lint`(--max-warnings=0) / `pnpm web:build` 全过。
+- 未做:`tauri build`、打包、安装、push —— 按要求代码攒在分支,随下次出版生效。
+- 未实测:真机上官方版运行时弹窗的实际触发(无 GUI 环境)。逻辑已单点收敛在纯函数 `detect_official_clash_verge`,后续可补单测。

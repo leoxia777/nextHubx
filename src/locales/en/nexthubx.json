@@ -1,13 +1,13 @@
 {
-  "brand": "nextHubx",
+  "brand": "NextHubX",
   "nav": {
     "activate": "Activate",
     "connect": "Connect",
     "account": "Account"
   },
   "activate": {
-    "title": "Activate nextHubx",
-    "subtitle": "Enter your activation token to connect to the nextHubx network",
+    "title": "Activate NextHubX",
+    "subtitle": "Enter your activation token to connect to the NextHubX network",
     "tokenLabel": "Activation token",
     "tokenPlaceholder": "Enter activation token",
     "submit": "Activate",
@@ -36,7 +36,7 @@
     "service": {
       "preparingTitle": "Preparing network service",
       "guideTitle": "Network service required",
-      "guideBody": "nextHubx needs to install a background network service to create a global proxy adapter. The system will request administrator privileges (UAC on Windows / password on macOS). This is only required once.",
+      "guideBody": "NextHubX needs to install a background network service to create a global proxy adapter. The system will request administrator privileges (UAC on Windows / password on macOS). This is only required once.",
       "install": "Authorize and install",
       "installing": "Installing service…",
       "retry": "Retry",
@@ -74,5 +74,11 @@
     "configUpdated": "Proxy configuration updated",
     "revokedNotice": "Your seat has been revoked, please reactivate",
     "failed": "Sync failed, will retry later"
+  },
+  "clashVergeConflict": {
+    "title": "Clash Verge conflict detected",
+    "runningBody": "Clash Verge is running. It will compete with NextHubX for the same network service and cause your connections to keep dropping. Please close Clash Verge first.",
+    "appearedBody": "Clash Verge has just started. It will disconnect your connection. Please close it.",
+    "confirm": "Got it"
   }
 }

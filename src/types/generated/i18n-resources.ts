@@ -244,6 +244,12 @@ export interface TranslationResources {
         tokenPlaceholder: string
       }
       brand: string
+      clashVergeConflict: {
+        appearedBody: string
+        confirm: string
+        runningBody: string
+        title: string
+      }
       connect: {
         connectButton: string
         disconnectButton: string

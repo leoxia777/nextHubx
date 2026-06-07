@@ -12,15 +12,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import {
-  Box,
-  List,
-  Menu,
-  MenuItem,
-  Paper,
-  SvgIcon,
-  ThemeProvider,
-} from '@mui/material'
+import { Box, List, Menu, MenuItem, Paper, ThemeProvider } from '@mui/material'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import type { CSSProperties } from 'react'
@@ -28,10 +20,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 
-import iconDark from '@/assets/image/icon_dark.svg?react'
-import iconLight from '@/assets/image/icon_light.svg?react'
-import LogoSvg from '@/assets/image/logo.svg?react'
+import nexthubxLogo from '@/assets/nexthubx-logo.png'
 import { BaseErrorBoundary } from '@/components/base'
+import { ClashVergeConflictDialog } from '@/components/layout/clash-verge-conflict-dialog'
 import { LayoutItem } from '@/components/layout/layout-item'
 import { LayoutTraffic } from '@/components/layout/layout-traffic'
 import { NoticeManager } from '@/components/layout/notice-manager'
@@ -275,6 +266,8 @@ const Layout = () => {
     <ThemeProvider theme={theme}>
       {/* 左侧底部窗口控制按钮 */}
       <NoticeManager position={verge?.notice_position} />
+      {/* 官方 Clash Verge 冲突提醒(启动检测 + 后台轮询) */}
+      <ClashVergeConflictDialog />
       <div
         style={{
           animation: 'fadeIn 0.5s',
@@ -333,18 +326,29 @@ const Layout = () => {
                   justifyContent: 'space-between',
                 }}
               >
-                <SvgIcon
-                  component={isDark ? iconDark : iconLight}
+                <img
+                  src={nexthubxLogo}
+                  alt="NextHubX"
                   style={{
                     height: '36px',
                     width: '36px',
                     marginTop: '-3px',
-                    marginRight: '5px',
+                    marginRight: '8px',
                     marginLeft: '-3px',
+                    objectFit: 'contain',
                   }}
-                  inheritViewBox
                 />
-                <LogoSvg fill={isDark ? 'white' : 'black'} />
+                <span
+                  style={{
+                    fontSize: '20px',
+                    fontWeight: 700,
+                    letterSpacing: '0.2px',
+                    lineHeight: '27px',
+                    color: isDark ? 'white' : 'black',
+                  }}
+                >
+                  NextHubX
+                </span>
               </div>
               <UpdateButton className="the-newbtn" />
             </div>

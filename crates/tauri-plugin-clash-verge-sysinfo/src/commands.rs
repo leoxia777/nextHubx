@@ -48,6 +48,19 @@ pub fn app_is_admin(state: State<'_, RwLock<Platform>>) -> Result<bool, Error> {
     Ok(state.inner().read().appinfo.app_is_admin)
 }
 
+/// 检测系统中是否有「官方 Clash Verge」(clash-verge-rev) 正在运行。
+///
+/// 官方版与 NextHubX 会争用同一网络服务（TUN / 系统代理 / 内核端口），
+/// 同时运行会导致连接互相断开。前端据此弹出提醒。
+///
+/// 仅匹配官方标识（bundle id `io.github.clash-verge-rev.clash-verge-rev`、
+/// 路径含 `Clash Verge.app` / `clash-verge-rev`），并显式排除本应用
+/// （`com.nexthubx.app` / `nexthubx`），不会误判 NextHubX 自身。
+#[command]
+pub fn detect_official_clash_verge() -> Result<bool, Error> {
+    Ok(crate::detect_official_clash_verge())
+}
+
 #[command]
 pub fn export_diagnostic_info<R: Runtime>(
     app_handle: AppHandle<R>,

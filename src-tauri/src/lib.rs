@@ -134,6 +134,7 @@ mod app_init {
             tauri_plugin_clash_verge_sysinfo::commands::get_app_uptime,
             tauri_plugin_clash_verge_sysinfo::commands::app_is_admin,
             tauri_plugin_clash_verge_sysinfo::commands::export_diagnostic_info,
+            tauri_plugin_clash_verge_sysinfo::commands::detect_official_clash_verge,
             cmd::is_port_in_use,
             cmd::get_sys_proxy,
             cmd::get_auto_proxy,
@@ -282,7 +283,7 @@ pub fn run() {
 
             #[cfg(target_os = "macos")]
             if let Some(window) = _app_handle.get_webview_window("main") {
-                let _ = window.set_title("nextHubx");
+                let _ = window.set_title("NextHubX");
             }
         }
 

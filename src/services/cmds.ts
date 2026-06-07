@@ -585,3 +585,16 @@ export const isPortInUse = async (port: number) => {
     return false
   }
 }
+
+/**
+ * 检测系统中是否有「官方 Clash Verge」(clash-verge-rev) 正在运行。
+ * 仅匹配官方标识,后端已显式排除 NextHubX 自身,不会误判。
+ */
+export const detectOfficialClashVerge = async () => {
+  try {
+    return await invoke<boolean>('detect_official_clash_verge')
+  } catch (error) {
+    console.error('检测官方 Clash Verge 失败:', error)
+    return false
+  }
+}

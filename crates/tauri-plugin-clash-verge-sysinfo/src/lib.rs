@@ -10,7 +10,7 @@ use deelevate::{PrivilegeLevel, Token};
 #[cfg(unix)]
 pub use libc;
 use parking_lot::RwLock;
-use sysinfo::{Networks, System};
+use sysinfo::{Networks, ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System, UpdateKind};
 use tauri::{
     Manager as _, Runtime,
     plugin::{Builder, TauriPlugin},
@@ -154,6 +154,55 @@ pub fn is_current_app_handle_admin<R: Runtime>(app: &tauri::AppHandle<R>) -> boo
     let platform_spec = app.state::<RwLock<Platform>>();
     let spec = platform_spec.read();
     spec.appinfo.app_is_admin
+}
+
+/// 官方 Clash Verge (clash-verge-rev) 的识别标识。
+///
+/// 通过 bundle id / 可执行文件路径中的关键词判断，全部小写匹配。
+/// 任意一项命中即视为官方版正在运行。
+const OFFICIAL_CLASH_VERGE_MARKERS: &[&str] = &[
+    "io.github.clash-verge-rev.clash-verge-rev",
+    "clash verge.app",
+    "clash-verge-rev",
+];
+
+/// 本应用 (NextHubX) 自身的标识，命中其中任意一项就排除，避免把自己误判成官方版。
+const SELF_MARKERS: &[&str] = &["com.nexthubx.app", "nexthubx"];
+
+/// 检测系统中是否有「官方 Clash Verge」(clash-verge-rev) 进程在运行。
+///
+/// 判定逻辑：枚举所有进程，对每个进程的可执行文件路径 + 进程名（统一转小写）做匹配：
+/// - 若其中包含本应用自身标识（`com.nexthubx.app` / `nexthubx`），直接跳过，**不会误判 NextHubX 自己**；
+/// - 否则若包含官方标识（bundle id / `Clash Verge.app` / `clash-verge-rev`），即判定为官方版正在运行。
+///
+/// 该函数为纯检测、无副作用，可被前端命令或后台轮询反复调用。
+pub fn detect_official_clash_verge() -> bool {
+    let mut system = System::new_with_specifics(
+        RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_exe(UpdateKind::Always)),
+    );
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::nothing().with_exe(UpdateKind::Always),
+    );
+
+    system.processes().values().any(|process| {
+        // 汇总可执行文件路径与进程名作为匹配文本，统一小写。
+        let mut haystack = String::new();
+        if let Some(exe) = process.exe() {
+            haystack.push_str(&exe.to_string_lossy().to_lowercase());
+        }
+        haystack.push(' ');
+        haystack.push_str(&process.name().to_string_lossy().to_lowercase());
+
+        // 先排除自身，避免误判 NextHubX。
+        if SELF_MARKERS.iter().any(|marker| haystack.contains(marker)) {
+            return false;
+        }
+        OFFICIAL_CLASH_VERGE_MARKERS
+            .iter()
+            .any(|marker| haystack.contains(marker))
+    })
 }
 
 #[inline]
