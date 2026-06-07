@@ -49,8 +49,9 @@ import {
   useLoadingOverlay,
   useNavMenuOrder,
 } from './_layout/hooks'
+import { useAdvancedNav } from './_layout/use-advanced-nav'
 import { handleNoticeMessage } from './_layout/utils'
-import { navItems } from './_routers'
+import { getNavItems, navItems } from './_routers'
 import LogsPage from './logs'
 
 import 'dayjs/locale/ru'
@@ -127,6 +128,10 @@ const Layout = () => {
   const [menuContextPosition, setMenuContextPosition] =
     useState<MenuContextPosition | null>(null)
 
+  // Hub4CC 高级/调试入口:开启才在侧边栏显示原生 clash 页(路由始终可达)
+  const { advancedNav, toggleAdvancedNav } = useAdvancedNav()
+  const visibleNavItems = useMemo(() => getNavItems(advancedNav), [advancedNav])
+
   const windowControlsRef = useRef<any>(null)
   const { decorated } = useWindowDecorations()
 
@@ -164,7 +169,7 @@ const Layout = () => {
     resetMenuOrder,
   } = useNavMenuOrder({
     enabled: menuUnlocked,
-    items: navItems,
+    items: visibleNavItems,
     storedOrder: verge?.menu_order,
     onOptimisticUpdate: handleMenuOrderOptimisticUpdate,
     onPersist: handleMenuOrderPersist,
@@ -202,6 +207,11 @@ const Layout = () => {
     setMenuContextPosition(null)
     void patchVerge({ collapse_navbar: !navCollapsed })
   }, [navCollapsed, patchVerge])
+
+  const handleToggleAdvancedNav = useCallback(() => {
+    setMenuContextPosition(null)
+    toggleAdvancedNav()
+  }, [toggleAdvancedNav])
 
   const customTitlebar = useMemo(
     () =>
@@ -439,6 +449,11 @@ const Layout = () => {
                 disabled={isDefaultOrder}
               >
                 {t('layout.components.navigation.menu.restoreDefaultOrder')}
+              </MenuItem>
+              <MenuItem onClick={handleToggleAdvancedNav} dense>
+                {advancedNav
+                  ? t('layout.components.navigation.menu.hideAdvanced')
+                  : t('layout.components.navigation.menu.showAdvanced')}
               </MenuItem>
             </Menu>
 

@@ -26,13 +26,26 @@ import RulesPage from './rules'
 import SettingsPage from './settings'
 import UnlockPage from './unlock'
 
-export const navItems = [
+/**
+ * Hub4CC 导航裁剪(M1):
+ * - `defaultNavItems`:默认导航,仅保留 home(后续放 Hub4CC 定制页)。
+ * - `advancedNavItems`:原生 clash 页(proxies/profiles/connections/rules/logs/unlock/settings),
+ *   默认从侧边栏隐藏,仅当「高级/调试入口」开启时才追加到导航中(排障用)。
+ * - `navItems`:全量项,**仅用于注册路由**——所有原生页路由始终可达(直接输 URL / 程序跳转),
+ *   只是默认不在侧边栏出现。
+ *
+ * `getNavItems(advanced)` 返回当前应显示在侧边栏的导航项,供 `_layout.tsx` 按 flag 过滤。
+ */
+export const defaultNavItems = [
   {
     label: 'layout.components.navigation.tabs.home',
     path: '/',
     icon: [<HomeRoundedIcon key="mui" />, <HomeSvg key="svg" />],
     Component: HomePage,
   },
+]
+
+export const advancedNavItems = [
   {
     label: 'layout.components.navigation.tabs.proxies',
     path: '/proxies',
@@ -76,6 +89,13 @@ export const navItems = [
     Component: SettingsPage,
   },
 ]
+
+/** 全量导航项(home + 原生页),仅用于注册路由,保证所有页面路由可达。 */
+export const navItems = [...defaultNavItems, ...advancedNavItems]
+
+/** 按「高级入口」flag 返回侧边栏应显示的导航项。 */
+export const getNavItems = (advanced: boolean) =>
+  advanced ? navItems : defaultNavItems
 
 export const router = createBrowserRouter([
   {
