@@ -12,8 +12,10 @@ pub mod network {
         pub const DEFAULT_SOCKS: u16 = 7898;
         pub const DEFAULT_HTTP: u16 = 7899;
 
+        // nexthubx 专属单例端口，隔离于官方 Clash Verge 的 33331，
+        // 避免两者单例检测/恢复窗口互相串扰。
         #[cfg(not(feature = "verge-dev"))]
-        pub const SINGLETON_SERVER: u16 = 33331;
+        pub const SINGLETON_SERVER: u16 = 34331;
         #[cfg(feature = "verge-dev")]
         pub const SINGLETON_SERVER: u16 = 11233;
     }

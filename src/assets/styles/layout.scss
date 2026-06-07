@@ -214,7 +214,8 @@
         justify-content: center !important;
       }
 
-      .the-logo > div > svg:last-child {
+      .the-logo > div > svg:last-child,
+      .the-logo > div > span:last-child {
         display: none !important;
       }
 

@@ -369,12 +369,12 @@ pub fn init_scheme() -> Result<()> {
     let app_exe = app_exe.to_string_lossy().into_owned();
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let (clash, _) = hkcu.create_subkey("Software\\Classes\\Clash")?;
-    clash.set_value("", &"nextHubx")?;
-    clash.set_value("URL Protocol", &"nextHubx URL Scheme Protocol")?;
-    let (default_icon, _) = hkcu.create_subkey("Software\\Classes\\Clash\\DefaultIcon")?;
+    let (nexthubx, _) = hkcu.create_subkey("Software\\Classes\\nexthubx")?;
+    nexthubx.set_value("", &"NextHubX")?;
+    nexthubx.set_value("URL Protocol", &"NextHubX URL Scheme Protocol")?;
+    let (default_icon, _) = hkcu.create_subkey("Software\\Classes\\nexthubx\\DefaultIcon")?;
     default_icon.set_value("", &app_exe)?;
-    let (command, _) = hkcu.create_subkey("Software\\Classes\\Clash\\Shell\\Open\\Command")?;
+    let (command, _) = hkcu.create_subkey("Software\\Classes\\nexthubx\\Shell\\Open\\Command")?;
     command.set_value("", &format!("{app_exe} \"%1\""))?;
 
     Ok(())
@@ -407,7 +407,7 @@ pub const fn init_scheme() -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-const DEEP_LINK_SCHEMES: &[&str] = &["clash", "clash-verge", "nexthubx"];
+const DEEP_LINK_SCHEMES: &[&str] = &["nexthubx"];
 
 pub async fn startup_script() -> Result<()> {
     let app_handle = handle::Handle::app_handle();

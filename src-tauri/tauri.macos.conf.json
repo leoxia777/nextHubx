@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "identifier": "com.nexthubx.app",
-  "productName": "nextHubx",
+  "productName": "NextHubX",
   "bundle": {
     "targets": ["app", "dmg"],
     "macOS": {
