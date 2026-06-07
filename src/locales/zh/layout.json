@@ -17,7 +17,9 @@
         "unlock": "解锁菜单排序",
         "lock": "锁定菜单排序",
         "collapseNavBar": "收起导航栏",
-        "expandNavBar": "展开导航栏"
+        "expandNavBar": "展开导航栏",
+        "showAdvanced": "显示高级/调试页(排障)",
+        "hideAdvanced": "隐藏高级/调试页"
       }
     }
   }

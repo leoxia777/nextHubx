@@ -178,9 +178,11 @@ export interface TranslationResources {
           menu: {
             collapseNavBar: string
             expandNavBar: string
+            hideAdvanced: string
             lock: string
             reorderMode: string
             restoreDefaultOrder: string
+            showAdvanced: string
             unlock: string
           }
           tabs: {
