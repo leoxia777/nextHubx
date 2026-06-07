@@ -27,8 +27,8 @@ import SettingsPage from './settings'
 import UnlockPage from './unlock'
 
 /**
- * Hub4CC 导航裁剪(M1):
- * - `defaultNavItems`:默认导航,仅保留 home(后续放 Hub4CC 定制页)。
+ * nextHubx 导航裁剪(M1):
+ * - `defaultNavItems`:默认导航,仅保留 home(后续放 nextHubx 定制页)。
  * - `advancedNavItems`:原生 clash 页(proxies/profiles/connections/rules/logs/unlock/settings),
  *   默认从侧边栏隐藏,仅当「高级/调试入口」开启时才追加到导航中(排障用)。
  * - `navItems`:全量项,**仅用于注册路由**——所有原生页路由始终可达(直接输 URL / 程序跳转),

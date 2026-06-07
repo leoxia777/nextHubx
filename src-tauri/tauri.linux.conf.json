@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "identifier": "com.hub4cc.client",
+  "identifier": "com.nexthubx.app",
   "bundle": {
     "targets": ["deb", "rpm"],
     "linux": {

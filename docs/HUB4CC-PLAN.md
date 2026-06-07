@@ -1,4 +1,4 @@
-# Clash Verge 客户端定制开发计划(Hub4CC 专属客户端)
+# Clash Verge 客户端定制开发计划(nextHubx 专属客户端)
 
 > 基于调研:`clash-verge-rev` v2.5.2(Tauri 2 + React/MUI + Rust + mihomo sidecar)。
 > 配合后端 `cc-gateway`(已有 `POST /api/activate` 一次性激活)。
@@ -18,8 +18,8 @@
 
 ## 1. 目标与范围
 
-基于 Clash Verge Rev fork 出 **Hub4CC 专属客户端**:
-- 默认只露极简定制界面:**激活 → 一键连接 → 账号信息 → 更新激活**,全程 Hub4CC 品牌。
+基于 Clash Verge Rev fork 出 **nextHubx 专属客户端**:
+- 默认只露极简定制界面:**激活 → 一键连接 → 账号信息 → 更新激活**,全程 nextHubx 品牌。
 - 原生 clash 界面(节点/规则/连接/日志/设置/TUN 状态)**隐藏但保留**,通过「高级/调试」入口可调出(排障用)。
 - 平台:**Windows + macOS**。
 - 更新激活:**静默自动同步 + 手动重激活**(两者都要)。
@@ -28,7 +28,7 @@
 ## 2. 架构总览
 
 ```
-┌─ Hub4CC 客户端(fork CVR) ─────────────┐      ┌─ Hub4CC 后端(cc-gateway) ─┐     ┌─ HK 网关 ─┐
+┌─ nextHubx 客户端(fork CVR) ─────────────┐      ┌─ nextHubx 后端(cc-gateway) ─┐     ┌─ HK 网关 ─┐
 │ React 定制 UI ─ Tauri(Rust)           │ HTTPS│ POST /api/activate(一次性) │     │ Caddy +   │
 │   · 激活/连接/账号/更新 + 隐藏的原生页 │─────▶│ GET  /api/client/sync(长期)│     │ sing-box  │
 │ mihomo sidecar(内核,TUN 走特权 Service)│      └────────────┬───────────────┘     └─────┬─────┘
@@ -41,11 +41,11 @@
 | # | 模块 | 主要改动 | 档 |
 |---|---|---|---|
 | 3.1 | 导航裁剪 + 高级入口 | `src/pages/_routers.tsx`(navItems 只留定制页;原生页移出导航但保留路由)、`src/pages/_layout.tsx`(高级开关按 flag 过滤) | 小 |
-| 3.2 | 定制页 | 新建 `src/pages/hub4cc-{activate,connect,account}.tsx`;连接页复用 `components/shared/proxy-control-switches.tsx`(系统代理+TUN+Service 安装) | 中 |
+| 3.2 | 定制页 | 新建 `src/pages/nexthubx-{activate,connect,account}.tsx`;连接页复用 `components/shared/proxy-control-switches.tsx`(系统代理+TUN+Service 安装) | 中 |
 | 3.3 | 激活落地 | 输 token → fetch 后端拿 Clash YAML → `createProfile({type:'local'}, yaml)` → `patchProfilesConfig({current:uid})`(链路现成,`services/cmds.ts`) | 中 |
 | 3.4 | 自动同步 | 启动/定时调 `/api/client/sync`:配置变了→重 createProfile+patch+重连;席位作废→提示重激活 | 中 |
-| 3.5 | 品牌化 | `tauri.conf.json` 系列 + `utils/dirs.rs`(APP_ID,换数据目录)+ 窗口标题(`resolve/window.rs`/`lib.rs` 硬编码)+ `icons/`(已有 Hub4CC favicon 可作素材)+ i18n + scheme;**identifier/service 名/计划任务名散落 ~10 处,需全量替换防与官方版冲突** | 小~中 |
-| 3.6 | 应用内自动更新 | `tauri.conf.json plugins.updater`:换自己的 minisign `pubkey`、`endpoints` 指向 Hub4CC 源;CI 产 `latest.json`+`.sig`;升级 UI 现成(`update-viewer.tsx`) | 中 |
+| 3.5 | 品牌化 | `tauri.conf.json` 系列 + `utils/dirs.rs`(APP_ID,换数据目录)+ 窗口标题(`resolve/window.rs`/`lib.rs` 硬编码)+ `icons/`(已有 nextHubx favicon 可作素材)+ i18n + scheme;**identifier/service 名/计划任务名散落 ~10 处,需全量替换防与官方版冲突** | 小~中 |
+| 3.6 | 应用内自动更新 | `tauri.conf.json plugins.updater`:换自己的 minisign `pubkey`、`endpoints` 指向 nextHubx 源;CI 产 `latest.json`+`.sig`;升级 UI 现成(`update-viewer.tsx`) | 中 |
 
 ### 3.5 TUN 模式与特权 Service 授权(重点,决定安装/首连体验)
 
@@ -107,14 +107,14 @@
 ## 5. 打包与分发
 
 - Windows:`nsis`(`tauri.windows.conf.json`,填 `certificateThumbprint`);macOS:`dmg`(`tauri.macos.conf.json`,填 `signingIdentity` + notarytool 公证)。
-- CI(GitHub Actions,参考 fork 自带 `.github/`):双平台打包 + 签名 + 产 `latest.json`/`.sig` → 上传 Hub4CC 更新源(HK 网关或对象存储)。
+- CI(GitHub Actions,参考 fork 自带 `.github/`):双平台打包 + 签名 + 产 `latest.json`/`.sig` → 上传 nextHubx 更新源(HK 网关或对象存储)。
 
 ## 6. 阶段里程碑
 
 | 里程碑 | 内容 | 产出 | 档 |
 |---|---|---|---|
 | **M0 准备** | GPL/签名决策、建 fork 私库(或公开 GPL 库)、生成 minisign 密钥、采购证书 | 可构建的 fork 基线 | 小 |
-| **M1 品牌+导航** | 品牌化全量替换、导航裁剪、高级入口 | 能跑出"Hub4CC 壳"(原生功能仍可调出) | 小~中 |
+| **M1 品牌+导航** | 品牌化全量替换、导航裁剪、高级入口 | 能跑出"nextHubx 壳"(原生功能仍可调出) | 小~中 |
 | **M2 激活闭环** | 激活页 + 拉配置导入 + 连接页(含 Service 安装)+ 账号信息页 | 输 token 即可连接、看账号 | 中 |
 | **M3 同步+重激活** | 后端 `/api/client/sync` + clientToken;客户端自动同步 + 手动重激活入口 | 换人/轮换无感更新;作废提示重激活 | 中 |
 | **M4 自动更新** | 自建更新源 + 应用内升级闭环 | 发版客户端自动提示升级 | 中 |

@@ -128,7 +128,7 @@ const Layout = () => {
   const [menuContextPosition, setMenuContextPosition] =
     useState<MenuContextPosition | null>(null)
 
-  // Hub4CC 高级/调试入口:开启才在侧边栏显示原生 clash 页(路由始终可达)
+  // nextHubx 高级/调试入口:开启才在侧边栏显示原生 clash 页(路由始终可达)
   const { advancedNav, toggleAdvancedNav } = useAdvancedNav()
   const visibleNavItems = useMemo(() => getNavItems(advancedNav), [advancedNav])
 

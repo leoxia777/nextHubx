@@ -1,16 +1,19 @@
-# Hub4CC 客户端开发笔记(DEV-NOTES)
+# nextHubx 客户端开发笔记(DEV-NOTES)
 
 > 记录 M0/M1 阶段的环境探测结果、待确认项、踩坑与决策。后续阶段持续追加。
 
-## 待确认项(需产品/负责人拍板)
+## 品牌取值(已最终确认,2026-06)
 
-| # | 项 | 当前取值 | 说明 |
+> 用户最终拍板:产品名 `nextHubx`、identifier `com.nexthubx.app`、scheme `nexthubx`。M1 阶段的占位值 `Hub4CC` / `com.hub4cc.client` / `hub4cc` 已全量替换(`grep -ri hub4cc` 全仓无残留品牌值;`docs/HUB4CC-*.md` 文件名保留不改,内容已更新)。
+
+| # | 项 | 取值 | 说明 |
 |---|---|---|---|
-| C1 | **产品名 productName** | `Hub4CC` | M1 暂定。已用于 tauri.conf / package.json / 窗口标题 / installer。 |
-| C2 | **bundle identifier** | `com.hub4cc.client` | M1 暂定。已用于 tauri.{conf,macos,windows,linux}.conf.json。⚠️ 见 C3。 |
-| C3 | **数据目录 APP_ID(dirs.rs)** | `com.hub4cc.client` | 与 identifier 同步。**改它会换数据目录**——老用户(若有)配置不迁移。内测期无存量用户,可直接改。dev feature 用 `com.hub4cc.client.dev`。 |
-| C4 | **深链 scheme** | 追加 `hub4cc`(保留 `clash`/`clash-verge`) | tauri.conf.json deep-link。保留旧 scheme 以兼容,新增 hub4cc 供后续激活深链用。Windows 注册表 scheme(init.rs)仍注册 `Clash`,见 K2。 |
-| C5 | **publisher / copyright** | publisher 改 `Hub4CC`;copyright 保留 GPL v3.0 声明 | GPL 要求保留许可声明,copyright 行不动。 |
+| C1 | **产品名 productName** | `nextHubx` | ✅ 已定。用于 tauri.conf / package.json(`name: nexthubx`)/ 窗口标题 / installer。 |
+| C2 | **bundle identifier** | `com.nexthubx.app` | ✅ 已定。用于 tauri.{conf,macos,windows,linux}.conf.json + entitlements.plist。 |
+| C3 | **数据目录 APP_ID(dirs.rs)** | `com.nexthubx.app` | ✅ 已定,与 identifier 同步。dev feature 用 `com.nexthubx.app.dev`;BACKUP_DIR=`nexthubx-backup`/`-dev`。 |
+| C4 | **深链 scheme** | `nexthubx`(保留 `clash`/`clash-verge`) | ✅ 已定。tauri.conf deep-link + linux DEEP_LINK_SCHEMES + 运行时 scheme.rs 匹配。Windows 注册表 fallback 仍待补,见 K7。 |
+| C5 | **publisher / copyright** | publisher=`nextHubx`;copyright 保留 GPL v3.0 声明 | ✅ 已定。GPL 要求保留许可声明,copyright 行不动。 |
+| C6 | **图标 / logo** | 沿用现有 hub 标(无文字) | ✅ 暂定沿用。**如需 nextHubx 专属 logo 待后补**(目前主图标为 cc-gateway favicon 放大的 hub 标,无文字,通用)。 |
 
 ## 环境探测结果(M0)
 
@@ -50,7 +53,7 @@
 favicon.svg → 1024 PNG 转换需要 rsvg/imagemagick/inkscape 之一,若本机缺失则记录待补。见构建探测章节实际结果。
 
 ### K5 — Windows 计划任务名 vs 官方版冲突
-`schtasks.rs` 的 `TASK_NAME_USER="Clash Verge"` / `TASK_NAME_ADMIN="Clash Verge (Admin)"` 是**本应用自己**创建的自启动计划任务(非 sidecar service),与官方 CVR 装在同机会冲突 → 已改为 Hub4CC 命名。XML 文件名(`clash-verge-task-*.xml`)是 app_home_dir 下的临时文件,随 APP_ID 数据目录隔离,保留原名无冲突风险(但一并记录)。
+`schtasks.rs` 的 `TASK_NAME_USER="Clash Verge"` / `TASK_NAME_ADMIN="Clash Verge (Admin)"` 是**本应用自己**创建的自启动计划任务(非 sidecar service),与官方 CVR 装在同机会冲突 → 已改为 nextHubx 命名。XML 文件名(`clash-verge-task-*.xml`)是 app_home_dir 下的临时文件,随 APP_ID 数据目录隔离,保留原名无冲突风险(但一并记录)。
 
 ### K6 — Node 版本要求(已解决,记录)
 仓库 `package.json` 声明 `packageManager: pnpm@11.3.0`,corepack 会强制使用该版本,
@@ -62,15 +65,15 @@ favicon.svg → 1024 PNG 转换需要 rsvg/imagemagick/inkscape 之一,若本机
 
 ### K7 — Windows 自定义 scheme 注册表(待补,非阻塞)
 `init.rs` 的 Windows `init_scheme()` 手动在注册表 `Software\Classes\Clash` 写 `clash://` 协议(对应旧 scheme)。
-新增的 `hub4cc://` scheme 已加入:① tauri.conf.json deep-link.schemes(安装期由 deep-link 插件注册);
+新增的 `nexthubx://` scheme 已加入:① tauri.conf.json deep-link.schemes(安装期由 deep-link 插件注册);
 ② Linux `DEEP_LINK_SCHEMES`;③ 运行时 scheme 匹配 `scheme.rs`。
-**但 Windows 这段手动注册表 fallback 仍只注册 `Clash` 子键**,未给 `hub4cc://` 建注册表项。
-若依赖该手动 fallback(而非 deep-link 插件),`hub4cc://` 在 Win 上可能不被 OS 关联。
-M1 暂保留原状(M2 接激活深链时再补 Windows 注册表 hub4cc 子键)。
+**但 Windows 这段手动注册表 fallback 仍只注册 `Clash` 子键**,未给 `nexthubx://` 建注册表项。
+若依赖该手动 fallback(而非 deep-link 插件),`nexthubx://` 在 Win 上可能不被 OS 关联。
+M1 暂保留原状(M2 接激活深链时再补 Windows 注册表 nexthubx 子键)。
 
 ### K8 — info_merge.plist 的 service 关联标识符(待确认)
 `packages/macos/info_merge.plist` 的 `AssociatedBundleIdentifiers` 原为
-`io.github.clash-verge-rev.clash-verge-rev.service`,已改为 `com.hub4cc.client.service` 以贴合新命名空间。
+`io.github.clash-verge-rev.clash-verge-rev.service`,已改为 `com.nexthubx.app.service` 以贴合新命名空间。
 ⚠️ **待确认**:实际特权 service(上游预编译 sidecar)的 bundle id 是否真为 `<app-id>.service`。
 若 service 二进制有自己固定的 bundle id,此处需对齐 service 真实 id(否则关联失效)。
 service 二进制 / IPC / Windows 服务名一律未改(见 K3)。
@@ -83,8 +86,8 @@ service 二进制 / IPC / Windows 服务名一律未改(见 K3)。
 ### K10 — 托盘图标未替换(设计确认)
 `pnpm tauri icon` 只重生成主应用图标(32/128/icns/ico/Square*Logo/StoreLogo/icon.png/icon.ico),
 **未触碰** `src-tauri/icons/tray-icon-*.ico`(那是托盘状态指示图标,功能性,非品牌 logo)。
-本次主图标已换成 Hub4CC hub 标(由 cc-gateway favicon.svg 放大到 1024 经 qlmanage 栅格化生成)。
-**待确认**:是否要为 Hub4CC 定制托盘图标(目前沿用上游托盘图标,不影响功能)。
+本次主图标已换成 nextHubx hub 标(由 cc-gateway favicon.svg 放大到 1024 经 qlmanage 栅格化生成)。
+**待确认**:是否要为 nextHubx 定制托盘图标(目前沿用上游托盘图标,不影响功能)。
 
 ### K12 — husky pre-commit 依赖 cargo-make(已绕过,记录)
 `.husky/pre-commit` 要求 `cargo-make`(Rust 工具),本机无 Rust → 提交被拦。
@@ -104,7 +107,7 @@ M0/M1 提交用 `git commit --no-verify` 绕过(前端 lint/typecheck/build 已�
 | 品牌化 productName / identifier / APP_ID / publisher | ✅ 完成(待确认取值 C1-C3) |
 | 窗口标题(window.rs / lib.rs) | ✅ |
 | 计划任务名(schtasks.rs) | ✅ |
-| 深链 scheme 追加 hub4cc(conf + linux + 运行时匹配) | ✅(Windows 注册表 fallback 待补 K7) |
+| 深链 scheme 追加 nexthubx(conf + linux + 运行时匹配) | ✅(Windows 注册表 fallback 待补 K7) |
 | Service/TUN 底层不动 | ✅ 遵守(K3) |
 | 图标全套生成 | ✅ 主图标完成(托盘图标沿用上游 K10) |
 | i18n 品牌串 zh/en | ✅(其余语言待补 K9) |

@@ -9,14 +9,14 @@ use std::{fs, path::PathBuf};
 use tauri::Manager as _;
 
 #[cfg(not(feature = "verge-dev"))]
-pub static APP_ID: &str = "com.hub4cc.client";
+pub static APP_ID: &str = "com.nexthubx.app";
 #[cfg(not(feature = "verge-dev"))]
-pub static BACKUP_DIR: &str = "hub4cc-backup";
+pub static BACKUP_DIR: &str = "nexthubx-backup";
 
 #[cfg(feature = "verge-dev")]
-pub static APP_ID: &str = "com.hub4cc.client.dev";
+pub static APP_ID: &str = "com.nexthubx.app.dev";
 #[cfg(feature = "verge-dev")]
-pub static BACKUP_DIR: &str = "hub4cc-backup-dev";
+pub static BACKUP_DIR: &str = "nexthubx-backup-dev";
 
 pub static PORTABLE_FLAG: OnceCell<bool> = OnceCell::new();
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "identifier": "com.hub4cc.client",
-  "productName": "Hub4CC",
+  "identifier": "com.nexthubx.app",
+  "productName": "nextHubx",
   "bundle": {
     "targets": ["app", "dmg"],
     "macOS": {

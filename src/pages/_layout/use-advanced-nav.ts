@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 
 /**
- * Hub4CC「高级 / 调试入口」开关(M1)。
+ * nextHubx「高级 / 调试入口」开关(M1)。
  *
  * 控制原生 clash 页(proxies/profiles/connections/rules/logs/unlock/settings)是否出现在侧边栏。
- * 默认关闭——普通员工只看到 Hub4CC 定制页;开启后追加原生页,供排障用。
+ * 默认关闭——普通员工只看到 nextHubx 定制页;开启后追加原生页,供排障用。
  *
  * 当前实现:常量默认值 + localStorage 持久化(本地配置),后续 M3 可接入设置页 / 远端下发。
- * 提供 window 级全局开关(`__hub4cc_setAdvancedNav(true)` / `localStorage`),
+ * 提供 window 级全局开关(`__nexthubx_setAdvancedNav(true)` / `localStorage`),
  * 方便在未做设置 UI 前从控制台或调试入口临时调出原生页。
  */
 
-const STORAGE_KEY = 'hub4cc:advanced-nav'
+const STORAGE_KEY = 'nexthubx:advanced-nav'
 
 /** 默认是否开启高级入口(M1 默认关闭)。 */
 export const ADVANCED_NAV_DEFAULT = false
 
-const STORAGE_EVENT = 'hub4cc:advanced-nav-changed'
+const STORAGE_EVENT = 'nexthubx:advanced-nav-changed'
 
 const readStored = (): boolean => {
   if (typeof window === 'undefined') {
@@ -79,8 +79,8 @@ export const useAdvancedNav = (): UseAdvancedNavResult => {
     window.addEventListener(STORAGE_EVENT, onChange)
     // 暴露给控制台 / 后续调试入口临时调出原生页
     ;(
-      window as unknown as { __hub4cc_setAdvancedNav?: (v: boolean) => void }
-    ).__hub4cc_setAdvancedNav = (v: boolean) => writeStored(Boolean(v))
+      window as unknown as { __nexthubx_setAdvancedNav?: (v: boolean) => void }
+    ).__nexthubx_setAdvancedNav = (v: boolean) => writeStored(Boolean(v))
     return () => {
       window.removeEventListener(STORAGE_EVENT, onChange)
     }
