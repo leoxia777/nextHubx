@@ -38,6 +38,7 @@ import { NoticeManager } from '@/components/layout/notice-manager'
 import { UpdateButton } from '@/components/layout/update-button'
 import { WindowControls } from '@/components/layout/window-controller'
 import { useI18n } from '@/hooks/use-i18n'
+import { useNexthubxAutoSync } from '@/hooks/use-nexthubx-sync'
 import { useVerge } from '@/hooks/use-verge'
 import { useWindowDecorations } from '@/hooks/use-window'
 import { useThemeMode } from '@/services/states'
@@ -127,6 +128,9 @@ const Layout = () => {
   const [menuUnlocked, setMenuUnlocked] = useState(false)
   const [menuContextPosition, setMenuContextPosition] =
     useState<MenuContextPosition | null>(null)
+
+  // nextHubx 自动同步:启动即同步一次 + 每 10 分钟轮询 /api/client/sync(仅此处挂载一次)
+  useNexthubxAutoSync()
 
   // nextHubx 高级/调试入口:开启才在侧边栏显示原生 clash 页(路由始终可达)
   const { advancedNav, toggleAdvancedNav } = useAdvancedNav()

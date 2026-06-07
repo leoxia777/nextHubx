@@ -207,6 +207,84 @@ export interface TranslationResources {
         title: string
       }
     }
+    nexthubx: {
+      account: {
+        copied: string
+        copy: string
+        email: string
+        empty: string
+        hidePassword: string
+        password: string
+        reactivate: string
+        showPassword: string
+        syncStatus: {
+          active: string
+          label: string
+          lastSync: string
+          revoked: string
+          syncing: string
+        }
+        title: string
+      }
+      activate: {
+        feedback: {
+          configError: string
+          empty: string
+          invalid: string
+          networkError: string
+          success: string
+          unknown: string
+        }
+        reactivateTitle: string
+        submit: string
+        submitting: string
+        subtitle: string
+        title: string
+        tokenLabel: string
+        tokenPlaceholder: string
+      }
+      brand: string
+      connect: {
+        connectButton: string
+        disconnectButton: string
+        fallback: {
+          body: string
+          title: string
+        }
+        feedback: {
+          connectFailed: string
+          serviceUnavailable: string
+        }
+        service: {
+          guideBody: string
+          guideTitle: string
+          install: string
+          installing: string
+          preparingTitle: string
+          ready: string
+          retry: string
+          skip: string
+        }
+        status: {
+          connected: string
+          connecting: string
+          disconnected: string
+        }
+        systemProxyMode: string
+        title: string
+        tunMode: string
+      }
+      nav: {
+        account: string
+        activate: string
+        connect: string
+      }
+      sync: {
+        configUpdated: string
+        failed: string
+        revokedNotice: string
+      }
+    }
     profiles: {
       components: {
         card: {

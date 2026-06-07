@@ -1,0 +1,78 @@
+{
+  "brand": "nextHubx",
+  "nav": {
+    "activate": "Activate",
+    "connect": "Connect",
+    "account": "Account"
+  },
+  "activate": {
+    "title": "Activate nextHubx",
+    "subtitle": "Enter your activation token to connect to the nextHubx network",
+    "tokenLabel": "Activation token",
+    "tokenPlaceholder": "Enter activation token",
+    "submit": "Activate",
+    "submitting": "Activating…",
+    "reactivateTitle": "Reactivate",
+    "feedback": {
+      "success": "Activated successfully, entering main view",
+      "empty": "Please enter an activation token",
+      "invalid": "Activation token is invalid or expired, please contact your administrator",
+      "networkError": "Network error, please try again later",
+      "configError": "Failed to import proxy configuration",
+      "unknown": "Activation failed, please try again later"
+    }
+  },
+  "connect": {
+    "title": "Connect",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting…"
+    },
+    "connectButton": "Connect",
+    "disconnectButton": "Disconnect",
+    "tunMode": "Global mode (TUN)",
+    "systemProxyMode": "System proxy mode",
+    "service": {
+      "preparingTitle": "Preparing network service",
+      "guideTitle": "Network service required",
+      "guideBody": "nextHubx needs to install a background network service to create a global proxy adapter. The system will request administrator privileges (UAC on Windows / password on macOS). This is only required once.",
+      "install": "Authorize and install",
+      "installing": "Installing service…",
+      "retry": "Retry",
+      "skip": "Skip (use system proxy)",
+      "ready": "Network service is ready"
+    },
+    "fallback": {
+      "title": "Fell back to system proxy mode",
+      "body": "The network service is not installed or permission was denied, so system proxy mode is used. Traffic from apps that ignore proxy settings may bypass the proxy."
+    },
+    "feedback": {
+      "connectFailed": "Failed to connect, please retry",
+      "serviceUnavailable": "Network service unavailable, please reinstall"
+    }
+  },
+  "account": {
+    "title": "Account",
+    "email": "Login email",
+    "password": "Login password",
+    "copy": "Copy",
+    "copied": "Copied to clipboard",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "empty": "No account information yet, please activate first",
+    "reactivate": "Reactivate",
+    "syncStatus": {
+      "label": "Sync status",
+      "active": "Active",
+      "syncing": "Syncing…",
+      "revoked": "Seat revoked, please reactivate",
+      "lastSync": "Last synced"
+    }
+  },
+  "sync": {
+    "configUpdated": "Proxy configuration updated",
+    "revokedNotice": "Your seat has been revoked, please reactivate",
+    "failed": "Sync failed, will retry later"
+  }
+}

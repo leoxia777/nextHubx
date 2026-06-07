@@ -117,3 +117,84 @@ M0/M1 提交用 `git commit --no-verify` 绕过(前端 lint/typecheck/build 已�
 | logs 页特殊渲染未破坏 | ✅(仅过滤侧边栏项,/logs 路由与 Layout 内渲染逻辑未动) |
 
 **未做(本阶段不在范围)**:原生构建/打包验证(需 Rust+sidecar)、M2 定制页、后端对接、签名。
+
+---
+
+## M2 阶段(激活闭环 + 连接 + 账号 + 自动同步)
+
+### 后端契约(已对接)
+- base:`https://gate.hub4cc.com`(已上线)。
+- `POST /api/activate` body `{token}` → 200 `{clientToken, identityEmail, identityPassword, proxyConfig:{format:'clash-yaml',content}}`;失效 → 409。
+- `GET /api/client/sync` 头 `Authorization: Bearer <clientToken>`(可带 `If-None-Match:<configFingerprint>`)→ 200 active `{status,proxyConfig,identityEmail,identityPassword,configFingerprint}` / 304 / 200 `{status:'revoked'}` / 401。
+
+### 调后端的 HTTP 方式(关键决策)
+**全部走 Tauri HTTP 插件 `@tauri-apps/plugin-http` 的 `fetch`**(Rust 侧发请求,不带 webview Origin
+头 → 不撞后端 CORS,后端只放行 admin.hub4cc.com)。**未用 webview 原生 fetch**。
+- 实现:`src/services/nexthubx-api.ts`(`activate` / `syncClient`)。参考 CVR `src/services/api.ts`(IP 检测/下载同样用此 plugin fetch)。
+- capabilities `desktop.json` 已放行 `http:default` + scope `https://*/*`,`gate.hub4cc.com` 覆盖。
+
+### C7 — clientToken / 账号本地存储方式(决策)
+**用 `@tauri-apps/plugin-fs` 写 JSON 文件 `nexthubx-client.json` 到 `$APPDATA`(`BaseDirectory.AppData`,
+即 CVR 应用数据目录,随 APP_ID 隔离)。** 实现:`src/services/nexthubx-store.ts`。
+- **为何不用「verge config 自定义字段」**:`IVergeConfig` 是 Rust serde struct,加自定义字段需改 Rust
+  (本阶段无 Rust 工具链 + 红线要求不改底层)。FS 文件是纯前端可写、最贴近「CVR 现成配置存储」的方式。
+- **为何不用 localStorage**:webview 存储可被清理、不在持久 APPDATA 目录、且非「配置存储」语义。
+- capabilities `migrated.json` 已放行 `$APPDATA/**` 的 `fs:allow-write-file` / `read-file` / `exists`。
+- ⚠️ **无 remove 权限**:`clearClientState` 用写入空对象 `{}` 抹除凭证内容(load 时无 clientToken 即视为
+  未激活),不物理删文件。见 K14。
+- ⚠️ **安全**:文件含长期 clientToken,当前与 CVR config 同目录(无系统级加密)。后续如需更强保护可迁移
+  到 OS keychain(需 Rust 侧 plugin)。见 K15。
+
+### M2 实现清单(文件)
+- `src/services/nexthubx-api.ts` — 后端 API 客户端(Tauri http)。
+- `src/services/nexthubx-store.ts` — clientToken/账号/fingerprint/profileUid 本地存储(fs)。
+- `src/services/nexthubx-profile.ts` — clash YAML 导入 + 切换(复用 createProfile/saveProfileFile/patchProfilesConfig/enhanceProfiles)。维护一个托管 profile uid 避免每次同步堆积。
+- `src/hooks/use-nexthubx-sync.ts` — `useNexthubxClient`(读凭证)+ `useNexthubxAutoSync`(启动 + 每 10min 轮询)。
+- `src/pages/nexthubx-activate.tsx` / `nexthubx-connect.tsx` / `nexthubx-account.tsx` — 三个定制页。
+- `src/locales/{zh,en}/nexthubx.json` + index.ts 注册 + `pnpm i18n:types` 重生 key(856 keys)。
+- `src/pages/_routers.tsx` — defaultNavItems = 连接/激活/账号;home 移入 advanced(路径改 `/home`);`/` index 重定向到 `/nexthubx/connect`。
+- `src/pages/_layout.tsx` — 顶层挂载 `useNexthubxAutoSync()` 一次。
+
+### K13 — Service 首启动引导只在「连接页」触发(非真正 app 首启动钩子)
+§3.5 要求「应用首次启动即引导授权装 Service,先于连接界面」。本阶段实现把引导放在**连接页**:进页即
+检测 `isServiceOk`,未就绪先展示安装引导卡片(而非连接按钮)。由于 `/` 默认重定向到连接页,**效果上等同
+首启动引导**。若要做成 app 级启动闸门(进任何页前强制装 Service),需 Rust 侧启动钩子 / 全局 gate,本阶段
+未做(底层不改造)。降级:用户点「暂不安装」→ fallbackMode → 连接时走系统代理。
+
+### K14 — 凭证清除是「抹除内容」而非删文件
+见 C7。capabilities 未给 `fs:allow-remove`,故 `clearClientState` 写空对象。若要物理删除需在
+`migrated.json` 加 `fs:allow-remove` 权限(改 capability,非 Rust 代码)。功能上无影响(load 以
+clientToken 是否存在判定激活态)。
+
+### K15 — clientToken 明文存储(安全待加固)
+当前 clientToken 明文存 APPDATA JSON。内测可接受;正式版建议迁 OS keychain(macOS Keychain /
+Windows Credential Manager),需引入 `tauri-plugin-stronghold` 或自写 Rust command(依赖 Rust 工具链)。
+
+### K16 — 自动同步未做去重 / 退避;通知较直接
+`useNexthubxAutoSync` 启动即同步 + 每 10min 轮询,失败仅 console 记录不打扰(等下次)。未实现指数退避、
+未与窗口可见性联动。`revoked`/`401` 都清凭证并提示重激活。后续可加退避 + 仅在前台轮询。
+
+### K17 — 原生构建仍未验证(同 K1)
+M2 纯前端 + 配置,三绿(typecheck/lint/web:build)。`tauri build` / `tauri dev` 仍因无 Rust 工具链
+未跑(K1 未解)。Service 安装 / TUN / 提权等真机行为**未实机验证**,仅按上游 API 复用、逻辑层接通。
+
+## M2 完成度自评
+
+**整体:M2 前端逻辑完成(~85%),前端三绿;真机行为未验证(无 Rust)。**
+
+| 子项 | 状态 |
+|---|---|
+| 激活页:token → /api/activate → 导入 YAML + 切换 + 存凭证 + 进主界面 | ✅ |
+| 激活失效(409)/网络错误 友好提示 | ✅ |
+| 连接页:复用 proxy-control / useServiceInstaller / isServiceAvailable | ✅ |
+| 首次引导装 Service(先于连接,§3.5) | ⚠️ 实现于连接页 + `/` 重定向到连接页(等效);非 app 级 gate(K13) |
+| 一键连接=开 TUN;拒绝/不可用→降级系统代理+提示 | ✅ |
+| 账号页:显示 email/password(可复制)+ 显隐密码 | ✅ |
+| 自动同步:启动 + 每 10min,If-None-Match,active 变更重导入,304 不动,revoked 清凭证提示 | ✅(逻辑层) |
+| 手动重激活入口 | ✅(账号页按钮 → 激活页;激活页兼作重激活) |
+| 三个定制页接入 defaultNavItems;原生页移入 advanced | ✅ |
+| 调后端走 Tauri http(非 webview fetch) | ✅ |
+| clientToken 安全存储 | ✅ fs@APPDATA(C7);明文待加固(K15) |
+
+**未做 / 待真机**:Service 安装 / TUN / 提权真机验证(K17,需 Rust+sidecar);app 级启动 gate(K13);
+凭证加密(K15);同步退避(K16)。

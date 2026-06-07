@@ -1,0 +1,78 @@
+{
+  "brand": "nextHubx",
+  "nav": {
+    "activate": "激活",
+    "connect": "连接",
+    "account": "账号"
+  },
+  "activate": {
+    "title": "激活 nextHubx",
+    "subtitle": "输入您的激活码以连接到 nextHubx 网络",
+    "tokenLabel": "激活码",
+    "tokenPlaceholder": "请输入激活码",
+    "submit": "激活",
+    "submitting": "正在激活…",
+    "reactivateTitle": "重新激活",
+    "feedback": {
+      "success": "激活成功，正在进入主界面",
+      "empty": "请输入激活码",
+      "invalid": "激活码无效或已失效，请联系管理员",
+      "networkError": "网络错误，请稍后重试",
+      "configError": "导入代理配置失败",
+      "unknown": "激活失败，请稍后重试"
+    }
+  },
+  "connect": {
+    "title": "连接",
+    "status": {
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "connecting": "正在连接…"
+    },
+    "connectButton": "一键连接",
+    "disconnectButton": "断开连接",
+    "tunMode": "全局模式（TUN）",
+    "systemProxyMode": "系统代理模式",
+    "service": {
+      "preparingTitle": "正在准备网络服务",
+      "guideTitle": "需要安装网络服务",
+      "guideBody": "nextHubx 需要安装一个后台网络服务以建立全局代理网卡。安装时系统会请求管理员权限（Windows 弹出 UAC / macOS 输入密码），整个过程仅需一次。",
+      "install": "授权并安装",
+      "installing": "正在安装服务…",
+      "retry": "重试",
+      "skip": "暂不安装（降级系统代理）",
+      "ready": "网络服务已就绪"
+    },
+    "fallback": {
+      "title": "已降级为系统代理模式",
+      "body": "未安装网络服务或权限不足，已切换为系统代理模式。部分不遵守代理设置的应用流量可能不走代理。"
+    },
+    "feedback": {
+      "connectFailed": "连接失败，请重试",
+      "serviceUnavailable": "网络服务不可用，请重新安装"
+    }
+  },
+  "account": {
+    "title": "账号信息",
+    "email": "登录邮箱",
+    "password": "登录密码",
+    "copy": "复制",
+    "copied": "已复制到剪贴板",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
+    "empty": "暂无账号信息，请先完成激活",
+    "reactivate": "重新激活",
+    "syncStatus": {
+      "label": "同步状态",
+      "active": "正常",
+      "syncing": "正在同步…",
+      "revoked": "席位已失效，请重新激活",
+      "lastSync": "上次同步"
+    }
+  },
+  "sync": {
+    "configUpdated": "代理配置已更新",
+    "revokedNotice": "您的席位已失效，请重新激活",
+    "failed": "同步失败，将在稍后重试"
+  }
+}
