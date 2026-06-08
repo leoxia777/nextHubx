@@ -181,7 +181,8 @@ jobs:
             [ -z "$url" ] && { echo ""; return; }
             gh release download "$TAG" --pattern "$1" --output - 2>/dev/null || echo ""
           }
-          url_of() { awk -F'\t' -v n="$1" '$1==n{print $2}' assets.tsv; }
+          # 用 tag 固定下载地址(un-draft 后有效);不可用 draft 的 untagged url(会 404)
+          url_of() { echo "https://github.com/leoxia777/nextHubx/releases/download/${TAG}/$1"; }
 
           PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           NOTES="NextHubX $TAG"
