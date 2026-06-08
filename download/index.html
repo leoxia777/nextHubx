@@ -70,9 +70,9 @@
       <a class="primary" id="primary" href="https://updates.nexthubx.com/download/latest/NextHubX-win.exe">检测系统中…</a>
       <span class="alt">
         其他平台:
-        <a href="https://updates.nexthubx.com/download/latest/NextHubX-mac.dmg">macOS · Apple Silicon (.dmg)</a>
+        <a id="dlMac" href="https://updates.nexthubx.com/download/latest/NextHubX-mac.dmg">macOS · Apple Silicon (.dmg)</a>
         &nbsp;·&nbsp;
-        <a href="https://updates.nexthubx.com/download/latest/NextHubX-win.exe">Windows · 64 位 (.exe)</a>
+        <a id="dlWin" href="https://updates.nexthubx.com/download/latest/NextHubX-win.exe">Windows · 64 位 (.exe)</a>
       </span>
     </div>
 
@@ -109,20 +109,34 @@
 
   <script>
     (function () {
-      var MAC = "https://updates.nexthubx.com/download/latest/NextHubX-mac.dmg";
-      var WIN = "https://updates.nexthubx.com/download/latest/NextHubX-win.exe";
+      var UP = "https://updates.nexthubx.com/";
+      var BASE = UP + "download/";
+      // fallback:固定直链(latest 覆盖);拿到 latest.json 后切到版本化归档地址(地址含版本号、
+      // immutable,既不受边缘缓存陈旧影响,也永不下到旧包)。
+      var mac = BASE + "latest/NextHubX-mac.dmg";
+      var win = BASE + "latest/NextHubX-win.exe";
       var ua = navigator.userAgent || "";
+      var isMac = /Mac/i.test(ua) && !/iPhone|iPad/i.test(ua);
       var p = document.getElementById("primary");
-      if (/Mac/i.test(ua) && !/iPhone|iPad/i.test(ua)) {
-        p.href = MAC; p.textContent = "下载 macOS 版 (.dmg)";
-      } else {
-        p.href = WIN; p.textContent = "下载 Windows 版 (.exe)";
+      var aMac = document.getElementById("dlMac");
+      var aWin = document.getElementById("dlWin");
+      function apply() {
+        if (aMac) aMac.href = mac;
+        if (aWin) aWin.href = win;
+        if (isMac) { p.href = mac; p.textContent = "下载 macOS 版 (.dmg)"; }
+        else { p.href = win; p.textContent = "下载 Windows 版 (.exe)"; }
       }
-      // 动态版本号(从更新源读取,本页无需随发版改动)
-      fetch("https://updates.nexthubx.com/darwin-aarch64/latest.json", { cache: "no-store" })
+      apply();
+      fetch(UP + "darwin-aarch64/latest.json", { cache: "no-store" })
         .then(function (r) { return r.json(); })
         .then(function (j) {
-          if (j && j.version) document.getElementById("ver").textContent = "最新版本 v" + j.version;
+          if (j && j.version) {
+            var v = j.version;
+            document.getElementById("ver").textContent = "最新版本 v" + v;
+            mac = BASE + "v" + v + "/NextHubX_" + v + "_aarch64.dmg";
+            win = BASE + "v" + v + "/NextHubX_" + v + "_x64-setup.exe";
+            apply();
+          }
         })
         .catch(function () {});
     })();
