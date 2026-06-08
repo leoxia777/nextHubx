@@ -177,6 +177,7 @@
           "openLogsDir": "Open Logs Dir",
           "checkUpdates": "Check for Updates",
           "showInMenuBar": "Show in Menu Bar",
+          "exportDiagnostics": "Export Diagnostic Info",
           "version": "Version"
         }
       },

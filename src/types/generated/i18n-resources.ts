@@ -706,6 +706,7 @@ export interface TranslationResources {
             fields: {
               checkUpdates: string
               copyEnvType: string
+              exportDiagnostics: string
               hotkeySetting: string
               language: string
               layoutSetting: string

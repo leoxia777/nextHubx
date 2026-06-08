@@ -491,6 +491,7 @@ export const translationKeys = [
   'settings.components.verge.basic.fields.openLogsDir',
   'settings.components.verge.basic.fields.checkUpdates',
   'settings.components.verge.basic.fields.showInMenuBar',
+  'settings.components.verge.basic.fields.exportDiagnostics',
   'settings.components.verge.basic.fields.version',
   'settings.components.verge.advanced.title',
   'settings.components.verge.advanced.tooltips.backupInfo',

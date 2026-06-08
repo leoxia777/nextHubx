@@ -1,11 +1,11 @@
 import { MenuItem, Select, Typography } from '@mui/material'
-import { useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DialogRef, Switch } from '@/components/base'
 import { updateLastCheckTime } from '@/hooks/use-update'
 import { useVerge } from '@/hooks/use-verge'
-import { openLogsDir } from '@/services/cmds'
+import { exportDiagnosticInfo, openLogsDir } from '@/services/cmds'
 import { supportedLanguages } from '@/services/i18n'
 import { showNotice } from '@/services/notice-service'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
@@ -77,6 +77,11 @@ const SettingVergeBasic = ({ onError }: Props) => {
     }
   }
 
+  const onExportDiagnosticInfo = useCallback(async () => {
+    await exportDiagnosticInfo()
+    showNotice.success('shared.feedback.notifications.common.copySuccess', 1000)
+  }, [])
+
   return (
     <SettingList title={t('settings.components.verge.basic.title')}>
       <ThemeViewer ref={themeRef} />
@@ -145,6 +150,11 @@ const SettingVergeBasic = ({ onError }: Props) => {
       <SettingItem
         onClick={onCheckUpdate}
         label={t('settings.components.verge.basic.fields.checkUpdates')}
+      />
+
+      <SettingItem
+        onClick={onExportDiagnosticInfo}
+        label={t('settings.components.verge.basic.fields.exportDiagnostics')}
       />
 
       <SettingItem label={t('settings.components.verge.basic.fields.version')}>
