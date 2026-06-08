@@ -59,10 +59,12 @@ export const defaultNavItems = [
     Component: () => null /* LogsPage rendered in Layout only on /logs route */,
   },
   {
+    // 「Test」tab 指向完整解锁测试页(UnlockPage):Netflix/ChatGPT/Claude/Disney/Gemini 等。
+    // label 沿用 test 文案,实际路由到 /unlock。简版延迟测试(TestPage)移入 advancedNavItems。
     label: 'layout.components.navigation.tabs.test',
-    path: '/test',
-    icon: [<SpeedRoundedIcon key="mui" />, <TestSvg key="svg" />],
-    Component: TestPage,
+    path: '/unlock',
+    icon: [<LockOpenRoundedIcon key="mui" />, <UnlockSvg key="svg" />],
+    Component: UnlockPage,
   },
   {
     label: 'layout.components.navigation.tabs.settings',
@@ -98,10 +100,11 @@ export const advancedNavItems = [
     Component: RulesPage,
   },
   {
-    label: 'layout.components.navigation.tabs.unlock',
-    path: '/unlock',
-    icon: [<LockOpenRoundedIcon key="mui" />, <UnlockSvg key="svg" />],
-    Component: UnlockPage,
+    // 简版延迟测试页(原 Test tab),保留在高级/排障导航中可达。
+    label: 'layout.components.navigation.tabs.test',
+    path: '/test',
+    icon: [<SpeedRoundedIcon key="mui" />, <TestSvg key="svg" />],
+    Component: TestPage,
   },
 ]
 

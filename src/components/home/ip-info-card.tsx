@@ -26,7 +26,7 @@ import { EnhancedCard } from './enhanced-card'
 
 // 定义刷新时间（秒）
 const IP_REFRESH_SECONDS = 300
-const COUNTDOWN_TICK_INTERVAL = 5_000
+const COUNTDOWN_TICK_INTERVAL = 1_000
 const IP_INFO_CACHE_KEY = 'cv_ip_info_cache'
 
 const InfoItem = memo(({ label, value }: { label: string; value?: string }) => (
@@ -64,28 +64,28 @@ type CountDownState = XOR<
   }
 >
 
-const IPInfoCardContainer = forwardRef<HTMLElement, React.PropsWithChildren>(
-  ({ children }, ref) => {
-    const { t } = useTranslation()
-    const { refetch: mutate } = useIPInfo()
+const IPInfoCardContainer = forwardRef<
+  HTMLElement,
+  React.PropsWithChildren<{ onRefresh: () => void }>
+>(({ children, onRefresh }, ref) => {
+  const { t } = useTranslation()
 
-    return (
-      <EnhancedCard
-        title={t('home.components.ipInfo.title')}
-        icon={<LocationOnOutlined />}
-        iconColor="info"
-        ref={ref}
-        action={
-          <IconButton size="small" onClick={() => mutate()}>
-            <RefreshOutlined />
-          </IconButton>
-        }
-      >
-        {children}
-      </EnhancedCard>
-    )
-  },
-)
+  return (
+    <EnhancedCard
+      title={t('home.components.ipInfo.title')}
+      icon={<LocationOnOutlined />}
+      iconColor="info"
+      ref={ref}
+      action={
+        <IconButton size="small" onClick={onRefresh}>
+          <RefreshOutlined />
+        </IconButton>
+      }
+    >
+      {children}
+    </EnhancedCard>
+  )
+})
 
 // IP信息卡片组件
 export const IpInfoCard = () => {
@@ -217,6 +217,19 @@ export const IpInfoCard = () => {
     setShowIp((prev) => !prev)
   }, [])
 
+  // 手动刷新:强制重新请求(react-query refetch 绕过 staleTime: Infinity / dedupe),
+  // 并立即把倒计时重置回 IP_REFRESH_SECONDS,不等下一个 tick。
+  // 成功后 getIpInfo 写入新的 lastFetchTs,后续 tick 会基于新时间戳继续递减。
+  const handleRefresh = useCallback(() => {
+    setCountdown({ type: 'revalidating' })
+    void mutate({ cancelRefetch: true }).finally(() => {
+      setCountdown({
+        type: 'countdown',
+        remainingSeconds: IP_REFRESH_SECONDS,
+      })
+    })
+  }, [mutate])
+
   let mainElement: React.ReactElement
 
   switch (true) {
@@ -247,7 +260,7 @@ export const IpInfoCard = () => {
               ? error.message
               : t('home.components.ipInfo.errors.load')}
           </Typography>
-          <Button onClick={() => mutate()} sx={{ mt: 2 }}>
+          <Button onClick={handleRefresh} sx={{ mt: 2 }}>
             {t('shared.actions.retry')}
           </Button>
         </Box>
@@ -327,7 +340,9 @@ export const IpInfoCard = () => {
   }
 
   return (
-    <IPInfoCardContainer ref={containerRef}>{mainElement}</IPInfoCardContainer>
+    <IPInfoCardContainer ref={containerRef} onRefresh={handleRefresh}>
+      {mainElement}
+    </IPInfoCardContainer>
   )
 }
 
