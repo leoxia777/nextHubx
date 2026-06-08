@@ -246,6 +246,38 @@ jobs:
             --cache-control 'no-cache'
           echo "Uploaded latest.json files to R2 bucket $R2_BUCKET."
 
+      # 安装包(dmg/exe)也传 R2,供 download.nexthubx.com 下载页直链(国内首次下载提速):
+      #   download/<tag>/<原名>       —— 版本归档,地址含版本号 → immutable 长缓存
+      #   download/latest/NextHubX-*  —— 固定直链,每版覆盖 → no-cache,下载页/分发用
+      # 注:自动升级仍走 latest.json 的版本化 url(签名匹配),与此处直链互不影响。
+      - name: Upload installers to R2 (download/ + latest/)
+        if: ${{ env.R2_CONFIGURED == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          mkdir -p inst
+          gh release download "$TAG" --dir inst --pattern '*.dmg' --pattern '*x64-setup.exe' || true
+          MAC=$(ls inst/*.dmg 2>/dev/null | head -1)
+          WIN=$(ls inst/*x64-setup.exe 2>/dev/null | head -1)
+          put() { # $1 local  $2 r2-key  $3 content-type  $4 cache-control
+            aws s3 cp "$1" "s3://${R2_BUCKET}/$2" --endpoint-url "$R2_ENDPOINT" \
+              --content-type "$3" --cache-control "$4"
+          }
+          if [ -n "$MAC" ]; then
+            put "$MAC" "download/${TAG}/$(basename "$MAC")" application/x-apple-diskimage 'public, max-age=31536000, immutable'
+            put "$MAC" "download/latest/NextHubX-mac.dmg" application/x-apple-diskimage 'no-cache'
+          else echo "::warning::no .dmg asset for $TAG"; fi
+          if [ -n "$WIN" ]; then
+            put "$WIN" "download/${TAG}/$(basename "$WIN")" application/vnd.microsoft.portable-executable 'public, max-age=31536000, immutable'
+            put "$WIN" "download/latest/NextHubX-win.exe" application/vnd.microsoft.portable-executable 'no-cache'
+          else echo "::warning::no x64-setup.exe asset for $TAG"; fi
+          echo "Installers synced to R2: download/${TAG}/ + download/latest/"
+
       - name: Skipped R2 upload (secrets not set)
         if: ${{ env.R2_CONFIGURED != 'true' }}
         run: echo "::notice::R2_* secrets not configured — skipping R2 upload. See docs/RELEASE.md."

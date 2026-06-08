@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEXTHubX 客户端下载</title>
+  <meta name="description" content="NEXTHubX 客户端下载 —— 下一代 LLM 触达解决方案" />
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --sub: #555;
+      --line: #e3e3e3;
+      --accent: #1a365d;
+      --bg: #fff;
+      --soft: #f6f7f9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 44px 24px 72px; }
+    header {
+      display: flex; align-items: baseline; gap: 12px;
+      border-bottom: 2px solid var(--accent); padding-bottom: 14px;
+    }
+    .brand { font-size: 21px; font-weight: 700; letter-spacing: .5px; color: var(--accent); }
+    .ver { margin-left: auto; font-size: 13px; color: var(--sub); }
+    h1 { font-size: 26px; font-weight: 600; margin: 34px 0 6px; }
+    .lead { color: var(--sub); margin-bottom: 30px; }
+    .dl { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    a.primary {
+      display: inline-block; background: var(--accent); color: #fff;
+      text-decoration: none; font-size: 15px; font-weight: 600;
+      padding: 12px 26px; border: 1px solid var(--accent);
+    }
+    a.primary:hover { background: #122a4a; }
+    .alt { font-size: 13.5px; color: var(--sub); }
+    .alt a { color: var(--accent); text-decoration: none; }
+    .alt a:hover { text-decoration: underline; }
+    section { margin-top: 38px; }
+    h2 { font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 12px;
+      border-left: 3px solid var(--accent); padding-left: 9px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--sub); font-weight: 600; width: 130px; white-space: nowrap; }
+    .steps { font-size: 14px; }
+    .steps li { margin: 6px 0 6px 18px; }
+    .steps b { color: var(--accent); }
+    code { background: var(--soft); padding: 1px 5px; font-size: 13px;
+      font-family: "SF Mono", Menlo, Consolas, monospace; }
+    footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
+      font-size: 12.5px; color: var(--sub); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="brand">NEXTHubX</span>
+      <span class="ver" id="ver">&nbsp;</span>
+    </header>
+
+    <h1>下载 NEXTHubX 客户端</h1>
+    <p class="lead">下一代 LLM 触达解决方案 · 安装后使用企业激活码激活即可接入。</p>
+
+    <div class="dl">
+      <a class="primary" id="primary" href="https://updates.nexthubx.com/download/latest/NextHubX-win.exe">检测系统中…</a>
+      <span class="alt">
+        其他平台:
+        <a href="https://updates.nexthubx.com/download/latest/NextHubX-mac.dmg">macOS · Apple Silicon (.dmg)</a>
+        &nbsp;·&nbsp;
+        <a href="https://updates.nexthubx.com/download/latest/NextHubX-win.exe">Windows · 64 位 (.exe)</a>
+      </span>
+    </div>
+
+    <section>
+      <h2>系统要求</h2>
+      <table>
+        <tr><th>macOS</th><td>11 (Big Sur) 及以上,Apple Silicon(M 系列芯片)。暂不提供 Intel 版。</td></tr>
+        <tr><th>Windows</th><td>Windows 10 / 11,64 位(x64)。</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>首次安装提示</h2>
+      <p class="lead" style="margin-bottom:14px;font-size:14px;">
+        本客户端未做操作系统代码签名,首次打开会被系统拦截一次,按下列步骤放行即可(后续不再提示):
+      </p>
+      <ol class="steps">
+        <li><b>macOS</b>:打开 dmg 拖入「应用程序」后,在 Launchpad 或访达里<b>右键点击图标 → 打开</b>,弹窗再点「打开」。若提示「已损坏」,在「终端」执行 <code>xattr -dr com.apple.quarantine /Applications/NextHubX.app</code> 后再打开。</li>
+        <li><b>Windows</b>:双击安装包若出现 SmartScreen 蓝色提示,点<b>「更多信息」→「仍要运行」</b>。</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>自动更新</h2>
+      <p class="lead" style="font-size:14px;">
+        安装后客户端会自动检查并提示更新,无需重新到本页下载。本页固定地址始终指向最新版本。
+      </p>
+    </section>
+
+    <footer>
+      NEXTHubX · 仅供授权用户使用 · 安装包经 minisign 签名校验后分发
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var MAC = "https://updates.nexthubx.com/download/latest/NextHubX-mac.dmg";
+      var WIN = "https://updates.nexthubx.com/download/latest/NextHubX-win.exe";
+      var ua = navigator.userAgent || "";
+      var p = document.getElementById("primary");
+      if (/Mac/i.test(ua) && !/iPhone|iPad/i.test(ua)) {
+        p.href = MAC; p.textContent = "下载 macOS 版 (.dmg)";
+      } else {
+        p.href = WIN; p.textContent = "下载 Windows 版 (.exe)";
+      }
+      // 动态版本号(从更新源读取,本页无需随发版改动)
+      fetch("https://updates.nexthubx.com/darwin-aarch64/latest.json", { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j && j.version) document.getElementById("ver").textContent = "最新版本 v" + j.version;
+        })
+        .catch(function () {});
+    })();
+  </script>
+</body>
+</html>
