@@ -5,6 +5,9 @@ dist
 dist-ssr
 *.local
 update.json
+
+# Local production signing key backup — NEVER commit (contains updater private key + password).
+.env.production
 scripts/_env.sh
 .vscode
 .tool-versions

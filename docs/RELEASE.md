@@ -3,9 +3,12 @@
 > 本文档描述 nextHubx 客户端从「打 tag」到「用户应用内自动升级」的完整发布链路,
 > 以及尚未配置的 secrets / Cloudflare R2 / 证书清单。
 >
-> 现状(框架阶段):代码与 CI 框架已就位,但**证书 / R2 / secrets 未配齐**,
-> 故 CI 在缺失这些时会**降级为 adhoc/无签名出包、跳过 R2 上传**,仍能产出可安装包。
-> 配齐下列各项后即转为正式签名发布。
+> **分发策略:沿用 Clash Verge 的无签名分发** —— 不做 Apple 公证、不做 Windows 代码签名。
+> macOS 出 adhoc 签名包、Windows 出未签名包;用户**首次启动需手动绕过 Gatekeeper / SmartScreen**
+> (见 §4)。这与 updater 的 minisign 签名**互不相关**:自动更新仍走 minisign 校验包完整性,必须保留。
+>
+> 现状(框架阶段):代码与 CI 框架已就位,但 **updater 密钥 secret / R2 未配齐**,
+> 故 CI 在缺失这些时会**跳过 .sig 生成 / R2 上传**,仍能产出可安装包。配齐后即转为正式自动更新发布。
 
 ---
 
@@ -15,8 +18,9 @@
 打 tag vX.Y.Z (从 main)
   → .github/workflows/release.yml 触发
     ├─ check-version : 校验 tag 在 main 上 且 == v<package.json.version>
-    ├─ build (matrix): macOS(aarch64) + Windows(x64)
+    ├─ build (matrix): macOS(aarch64, adhoc) + Windows(x64, 未签名)
     │     tauri-action → 出 .dmg / -setup.exe + updater 包(.app.tar.gz / .nsis.zip)+ .sig
+    │     (无 OS 代码签名;仅 updater minisign 签 .sig)
     │     → 创建 draft GitHub Release 并上传上述产物
     └─ publish:
           ├─ 从 draft release 资产读 url + .sig,生成 per-target latest.json
@@ -46,40 +50,21 @@
 在仓库 `Settings → Secrets and variables → Actions → New repository secret` 添加。
 未配齐前 CI 会自动降级(见各项「缺失时行为」)。
 
+> **不做 OS 代码签名**(沿用 Clash Verge):故**无** Apple(`APPLE_*`)/ Windows(`AZURE_*` / 证书指纹)
+> 任何 secret。只需下面两类:**updater 签名** + **R2**。
+> 三个 updater 相关值的本地备份在 `nextHubx/.env.production`(已 `.gitignore`,绝不入库);
+> GitHub secret 的值即取自该文件(见 §3)。
+
 ### 1.1 Updater 签名(minisign)——M4 必需
 
 | Secret | 来源 | 缺失时行为 |
 |---|---|---|
-| `TAURI_SIGNING_PRIVATE_KEY` | `src-tauri/nexthubx-updater.key` 文件**全部内容**(见 §3) | 不产 `.sig` → 应用端无法校验更新 → 自动更新失效(但 dmg/exe 仍出) |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 生成密钥时设置的密码 | 同上 |
+| `TAURI_SIGNING_PRIVATE_KEY` | `.env.production` 的 `TAURI_SIGNING_PRIVATE_KEY`(= `src-tauri/nexthubx-updater.key` 文件**全部内容**,见 §3) | 不产 `.sig` → 应用端无法校验更新 → 自动更新失效(但 dmg/exe 仍出) |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | `.env.production` 的同名值(生成密钥时设的强密码) | 同上 |
 
-### 1.2 Apple 代码签名 + 公证(macOS)——证书后补
+> updater minisign 签名**与 OS 代码签名无关**,仅用于自动更新包的完整性校验,**必须保留**。
 
-| Secret | 说明 | 缺失时行为 |
-|---|---|---|
-| `APPLE_CERTIFICATE` | Developer ID Application 证书导出的 `.p12`,base64 编码后的字符串 | macOS 走 **adhoc 签名**,用户首次需手动绕 Gatekeeper(右键打开),TUN 仍可用(见 HUB4CC-PLAN §3.5) |
-| `APPLE_CERTIFICATE_PASSWORD` | `.p12` 导出密码 | 同上 |
-| `APPLE_SIGNING_IDENTITY` | 形如 `Developer ID Application: Your Name (TEAMID)` | 同上 |
-| `APPLE_ID` | 公证用 Apple 账号邮箱 | 不公证(adhoc) |
-| `APPLE_APP_PASSWORD` | App-specific password(account.apple.com 生成)。⚠️ workflow env 名为 `APPLE_PASSWORD`,值取此 secret | 不公证 |
-| `APPLE_TEAM_ID` | Apple 开发者 Team ID(10 位) | 不公证 |
-
-> Apple Developer:**个人账号 $99/年**即可(Developer ID + 公证,非 $299 Enterprise)。
-
-### 1.3 Windows 代码签名——证书后补
-
-当前 `tauri.windows.conf.json` 的 `certificateThumbprint: null` → 默认**不签名**(仅 SmartScreen 警告,可安装运行)。
-正式签名两条路任选:
-
-| 方案 | 需要的 secret / 配置 | 说明 |
-|---|---|---|
-| **Azure Trusted Signing**(推荐,云签名免硬件 token,~$10/月) | `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` + Trusted Signing account/endpoint | 需在 build job 后加一步 `azure/trusted-signing-action` 对 `-setup.exe` 签名,再补签 `.sig` |
-| **OV/EV 证书**(~$200-400/年,需硬件 token) | 证书指纹填入 `tauri.windows.conf.json.bundle.windows.certificateThumbprint`(或经 env) + `timestampUrl` | Tauri 构建时自动签 |
-
-> 缺失时行为:Windows 包不签名,安装有 SmartScreen 警告,功能正常。
-> 接入签名时,务必在 **生成 `.sig` 之前** 完成 exe 签名(签名会改变文件 → 影响 minisign 摘要)。
-
-### 1.4 Cloudflare R2 上传(更新源)——M5 必需
+### 1.2 Cloudflare R2 上传(更新源)——M5 必需
 
 | Secret | 说明 | 缺失时行为 |
 |---|---|---|
@@ -120,31 +105,35 @@
 
 ## 3. minisign 私钥配置(从 `nexthubx-updater.key` 取)
 
-M4 的更新签名密钥对已用 `pnpm tauri signer generate` 生成:
+M4 的更新签名密钥对已用 `pnpm tauri signer generate` **以强密码重新生成**(强密码由 `openssl rand -base64 24` 产生):
 
 - **公钥**:`src-tauri/nexthubx-updater.key.pub`(可公开,已入 git;其 base64 内容已填进
   `tauri.conf.json` 的 `plugins.updater.pubkey`)。
 - **私钥**:`src-tauri/nexthubx-updater.key`(⚠️ **已加 `.gitignore`,绝不提交、绝不外泄**)。
-- **密码**:生成时设置的密码。⚠️ **当前用的是占位密码 `CHANGE_ME_nexthubx_placeholder_pw`**,
-  正式发布前**强烈建议重新生成密钥对并用强密码**(见下「轮换」)。
+- **密码**:生成时设置的强密码。
+- **本地备份**:私钥内容 + 密码 + 公钥三项已写入 `nextHubx/.env.production`
+  (`TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` / `TAURI_UPDATER_PUBKEY`)。
+  该文件**已 `.gitignore`,绝不入库**,作为密钥的唯一本地备份 —— 丢失即无法再签更新包,
+  务必离线保管。CI 用的 GitHub secret 值即取自此文件。
 
-配置到 CI:
+配置到 CI(值取自 `.env.production`):
 
 ```bash
 # 私钥内容(整文件)→ TAURI_SIGNING_PRIVATE_KEY
 gh secret set TAURI_SIGNING_PRIVATE_KEY < src-tauri/nexthubx-updater.key
-# 私钥密码 → TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --body 'your-key-password'
+# 私钥密码 → TAURI_SIGNING_PRIVATE_KEY_PASSWORD(取 .env.production 中的同名值)
+gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --body '<.env.production 里的密码>'
 ```
 
-**轮换 / 用强密码重新生成**(推荐在正式发布前做一次):
+**再次轮换 / 重新生成**(如密钥泄露需更换):
 
 ```bash
 eval "$(fnm env)"; fnm use 22
-pnpm tauri signer generate -w src-tauri/nexthubx-updater.key -f -p '强密码'
-# 把新公钥 base64 内容填回 tauri.conf.json plugins.updater.pubkey:
+PW="$(openssl rand -base64 24)"
+node_modules/.bin/tauri signer generate -w src-tauri/nexthubx-updater.key -f -p "$PW" --ci
+# 把新公钥内容填回 tauri.conf.json plugins.updater.pubkey + 更新 .env.production 三项,
+# 再重配上面两个 gh secret。
 cat src-tauri/nexthubx-updater.key.pub        # 直接复制该文件全部内容作为 pubkey 值
-# 重新配 secret(同上两条 gh secret set)
 ```
 
 > ⚠️ 一旦有用户装了某公钥的版本,**更换公钥会导致旧用户无法验证新更新**
@@ -152,26 +141,28 @@ cat src-tauri/nexthubx-updater.key.pub        # 直接复制该文件全部内�
 
 ---
 
-## 4. Apple / Windows 证书后补步骤
+## 4. 无签名分发 + 用户首次启动绕过系统拦截
 
-### 4.1 Apple(macOS)
-1. Apple Developer Program 注册($99/年,个人即可)。
-2. Xcode 或开发者后台生成 **Developer ID Application** 证书,导出 `.p12`。
-3. `base64 -i cert.p12 | pbcopy` → 填 `APPLE_CERTIFICATE`;`.p12` 密码填 `APPLE_CERTIFICATE_PASSWORD`。
-4. `APPLE_SIGNING_IDENTITY` = `security find-identity -v -p codesigning` 里那条 `Developer ID Application: ...`。
-5. 公证:`APPLE_ID`(账号邮箱)、`APPLE_APP_PASSWORD`(App-specific password)、`APPLE_TEAM_ID`。
-6. 配齐后下次发版 tauri-action 自动签名 + 公证,用户无需绕 Gatekeeper。
+**本项目沿用 Clash Verge 的做法:不做 Apple 公证、不做 Windows 代码签名。**
+`tauri.macos.conf.json` 的 `signingIdentity: null` → macOS adhoc 签名;
+`tauri.windows.conf.json` 的 `certificateThumbprint: null` → Windows 未签名。
+代价是用户**首次启动**会遇到系统拦截,需手动绕过一次(之后正常)。
 
-### 4.2 Windows
-- 选 **Azure Trusted Signing**:在 release.yml 的 `build` job、`Tauri build` 步**之后**、
-  生成 `.sig` **之前**插入 `azure/trusted-signing-action@v0` 对 `target/.../bundle/nsis/*-setup.exe` 签名;
-  配 `AZURE_TENANT_ID/CLIENT_ID/CLIENT_SECRET`。因签名改变文件,签完需重新生成该 exe 的 `.sig`
-  (`pnpm tauri signer sign` 或重跑 bundler 的签名步)。
-- 或 **OV/EV 证书**:把指纹填 `tauri.windows.conf.json.bundle.windows.certificateThumbprint`,
-  Tauri 构建时即签(此时 `.sig` 在签名后生成,无重签问题)。
+### 4.1 macOS(Gatekeeper)
+adhoc 包未经 Apple 公证,首次双击会提示"无法打开/已损坏"。用户任选其一绕过:
+- **右键打开**:Finder 里右键 App → `打开` → 弹窗再点 `打开`(仅首次)。
+- 或终端清除隔离属性:`xattr -dr com.apple.quarantine /Applications/NextHubX.app`。
 
-> ⚠️ 通用红线:**代码签名必须发生在 minisign `.sig` 生成之前**,否则 `.sig` 摘要对不上签名后的文件,
-> 应用端校验失败。OV/EV 走 Tauri 内置签名天然满足;Azure 后置签名需手动补签 `.sig`。
+### 4.2 Windows(SmartScreen)
+未签名 `-setup.exe` 首次运行弹 SmartScreen 蓝屏警告:
+- 点 `更多信息` → `仍要运行`(仅首次)。
+
+> 说明:无签名不影响功能(含 TUN);只是首次需用户确认。如未来要消除该提示,
+> 可分别接入 Apple Developer ID 公证 / Windows 代码签名(Azure Trusted Signing 或 OV/EV 证书),
+> 届时需在 release.yml 重新加回对应 step 与 secrets。
+>
+> ⚠️ 通用红线:若将来接入**后置**代码签名(如 Azure 对已构建 exe 签名),**必须在 minisign `.sig`
+> 生成之前**完成,否则 `.sig` 摘要对不上签名后文件,应用端校验失败。Tauri 内置签名(证书指纹)天然满足。
 
 ---
 
@@ -247,10 +238,9 @@ Tauri updater v2 单平台格式(本流程**每个 target 一个文件**,只含�
 
 ## 7. 待办 / 已知缺口
 
-- [ ] 配齐 §1 所有 secrets(updater 私钥 / Apple / Windows / R2)。
+- [ ] 配齐 §1 所有 secrets(updater 私钥 + 密码 / R2;**无 Apple/Windows 签名 secret**)。
 - [ ] R2 开通 + bucket + `updates.nexthubx.com` 自定义域(§2);确认 endpoint 域名最终值。
-- [ ] **正式发布前用强密码重新生成 minisign 密钥对**(当前为占位密码),并同步 pubkey + secret(§3)。
-- [ ] Windows 签名方案落地(Azure Trusted Signing / OV 证书),注意签名须先于 `.sig` 生成(§4.2)。
+- [x] 用强密码重新生成 minisign 密钥对并同步 pubkey + `.env.production`(§3)。
 - [ ] 如需安装包也走 R2 加速,扩展 publish job 把 dmg/exe 也上传 R2 并改 latest.json 的 url。
 - [ ] rc 预发布是否应隔离更新源(当前 rc 也会更新 latest.json)。
 - [ ] 未跑 `tauri build` 验证本框架(证书/secrets 未齐),首次真跑需关注:tauri-action 版本、

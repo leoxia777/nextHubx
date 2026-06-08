@@ -4,9 +4,10 @@ name: NextHubX Release
 # Builds macOS (aarch64) + Windows (x64) → dmg/nsis + updater .sig →
 # per-target latest.json → upload to Cloudflare R2 → publish GitHub Release.
 #
-# Secrets / R2 / certificates are referenced as placeholders. Until they are
-# configured, signing steps fall back to adhoc/unsigned and R2 upload is
-# skipped (see docs/RELEASE.md). The build still produces installable bundles.
+# No OS code signing (same as Clash Verge): macOS is adhoc-signed, Windows is
+# unsigned. Only the updater minisign key (TAURI_SIGNING_*) and R2 secrets are
+# used; both are optional — if unset, .sig/R2 upload are skipped and the build
+# still produces installable bundles (see docs/RELEASE.md).
 
 on:
   push:
@@ -101,22 +102,19 @@ jobs:
           pnpm i
           pnpm run prebuild ${{ matrix.target }}
 
-      - name: Tauri build (dmg/nsis + updater .sig)
+      - name: Tauri build (dmg/nsis + updater .sig, unsigned binaries)
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # ── Updater signing (minisign). From nexthubx-updater.key — see docs/RELEASE.md.
-          #    If unset, .sig is not produced and auto-update won't verify; build still succeeds.
+          #    Independent of OS code signing. If unset, .sig is not produced and
+          #    auto-update won't verify; build still succeeds.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # ── Apple code signing + notarization (macOS). Placeholders; adhoc if unset.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # ── No OS code signing: macOS ships adhoc-signed, Windows ships unsigned
+          #    (same as Clash Verge). Users bypass Gatekeeper/SmartScreen on first
+          #    launch — see docs/RELEASE.md. updater minisign above is unaffected.
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'NextHubX ${{ github.ref_name }}'
