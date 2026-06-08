@@ -260,3 +260,5 @@ jobs:
             --prerelease="$PRERELEASE" \
             --title "NextHubX $TAG"
           echo "Published release $TAG."
+
+# ci: re-register workflow on default branch (main)
