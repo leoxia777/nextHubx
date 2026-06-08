@@ -18,3 +18,8 @@ CLAUDE.md
 .vfox/
 .claude
 AGENTS.md
+
+# minisign updater private key — NEVER commit. Public key (.pub) is fine to track.
+src-tauri/nexthubx-updater.key
+src-tauri/*.key
+!src-tauri/*.key.pub
