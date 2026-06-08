@@ -23,10 +23,10 @@ import { Outlet, useLocation, useNavigate } from 'react-router'
 import nexthubxLogo from '@/assets/nexthubx-logo.png'
 import { BaseErrorBoundary } from '@/components/base'
 import { ClashVergeConflictDialog } from '@/components/layout/clash-verge-conflict-dialog'
+import { ExitMismatchGuard } from '@/components/layout/exit-mismatch-guard'
 import { LayoutItem } from '@/components/layout/layout-item'
 import { LayoutTraffic } from '@/components/layout/layout-traffic'
 import { NoticeManager } from '@/components/layout/notice-manager'
-import { ServiceGate } from '@/components/layout/service-gate'
 import { UpdateButton } from '@/components/layout/update-button'
 import { WindowControls } from '@/components/layout/window-controller'
 import { useI18n } from '@/hooks/use-i18n'
@@ -269,8 +269,9 @@ const Layout = () => {
       <NoticeManager position={verge?.notice_position} />
       {/* 官方 Clash Verge 冲突提醒(启动检测 + 后台轮询) */}
       <ClashVergeConflictDialog />
-      {/* Service 强制引导(A3):未就绪强制安装,不降级 */}
-      <ServiceGate />
+      {/* 出口 IP 不一致全窗口警示(激活后持续监测,后台通知 + 唤起窗口) */}
+      <ExitMismatchGuard />
+      {/* 注:首启动 ServiceGate 已移除,Service 检查/安装移至激活流程(account-card) */}
       <div
         style={{
           animation: 'fadeIn 0.5s',

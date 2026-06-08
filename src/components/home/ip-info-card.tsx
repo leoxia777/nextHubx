@@ -14,7 +14,6 @@ import {
   Skeleton,
   Typography,
 } from '@mui/material'
-import { useQuery } from '@tanstack/react-query'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { useEffect } from 'foxact/use-abortable-effect'
 import { useIntersection } from 'foxact/use-intersection'
@@ -29,15 +28,14 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
-import { getIpInfo } from '@/services/api'
+import { useIpInfoQuery } from '@/hooks/use-ip-info'
+import { useNexthubxExitGuard } from '@/hooks/use-nexthubx-exit-guard'
 
 import { EnhancedCard } from './enhanced-card'
 
 // 定义刷新时间（秒）
 const IP_REFRESH_SECONDS = 300
 const COUNTDOWN_TICK_INTERVAL = 1_000
-const IP_INFO_CACHE_KEY = 'cv_ip_info_cache'
 
 const InfoItem = memo(({ label, value }: { label: string; value?: string }) => (
   <Box sx={{ mb: 0.7, display: 'flex', alignItems: 'flex-start' }}>
@@ -116,19 +114,16 @@ export const IpInfoCard = () => {
     remainingSeconds: IP_REFRESH_SECONDS,
   })
 
-  const { data: ipInfo, error, isLoading, refetch: mutate } = useIPInfo()
+  const { data: ipInfo, error, isLoading, refetch: mutate } = useIpInfoQuery()
 
-  // 出口 IP 自动比对(无需用户确认):
-  // - expectedExitIp 为空(未同步/老数据)→ 不比对、不显示;
-  // - 实际 IP 与分配出口一致 → 显示绿色「出口匹配」标;
-  // - 不一致 → 显著红色警示。
-  const { clientState } = useNexthubxClient()
-  const expectedExitIp = clientState?.expectedExitIp?.trim()
-  const actualIp = ipInfo?.ip?.trim()
-  const exitMatch = useMemo<'match' | 'mismatch' | null>(() => {
-    if (!expectedExitIp || !actualIp) return null
-    return expectedExitIp === actualIp ? 'match' : 'mismatch'
-  }, [expectedExitIp, actualIp])
+  // 出口 IP 自动比对(无需用户确认),走共享守卫(防误报 5 条件 + 后台通知):
+  // - 一致 → 绿色「出口匹配」标;
+  // - 不一致 → 红色警示(全窗口警示由 ExitMismatchGuard 负责)。
+  const {
+    status: exitMatch,
+    expectedExitIp,
+    actualIp,
+  } = useNexthubxExitGuard({ actualIp: ipInfo?.ip })
 
   // function useEffectEvent
   const onCountdownTick = useEffectEvent(async () => {
@@ -390,17 +385,4 @@ export const IpInfoCard = () => {
       {mainElement}
     </IPInfoCardContainer>
   )
-}
-
-function useIPInfo() {
-  return useQuery({
-    queryKey: [IP_INFO_CACHE_KEY],
-    queryFn: getIpInfo,
-    staleTime: Infinity,
-    gcTime: 60 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: 1,
-    retryDelay: 30_000,
-  })
 }

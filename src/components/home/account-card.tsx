@@ -1,13 +1,19 @@
+/* eslint-disable @eslint-react/set-state-in-effect */
 import {
   AccountCircleOutlined,
   ContentCopyRounded,
   RefreshRounded,
+  ShieldRounded,
+  SupportAgentRounded,
   VisibilityOffRounded,
   VisibilityRounded,
+  WarningAmberRounded,
 } from '@mui/icons-material'
 import {
+  Alert,
   Box,
   Button,
+  CircularProgress,
   IconButton,
   InputAdornment,
   Stack,
@@ -17,11 +23,15 @@ import {
 } from '@mui/material'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { useLockFn } from 'ahooks'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useIpInfoQuery } from '@/hooks/use-ip-info'
+import { useNexthubxExitGuard } from '@/hooks/use-nexthubx-exit-guard'
 import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
+import { useServiceInstaller } from '@/hooks/use-service-installer'
 import { useSystemState } from '@/hooks/use-system-state'
+import { useVerge } from '@/hooks/use-verge'
 import { isServiceAvailable } from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
@@ -31,25 +41,60 @@ import { showNotice } from '@/services/notice-service'
 import { EnhancedCard } from './enhanced-card'
 
 /**
- * Home「账号」卡片(最终 spec ①)。
+ * Home「账号」卡片(最终 spec ① + 分步激活重构)。
  *
- * - 未激活:输入激活码 + 激活 → POST /api/activate → 导入并切换 clash YAML profile
- *   + 存 clientToken(复用 nexthubx-store)→ 刷新为已激活态。
- * - 已激活:展示 identity(email/password 可复制)+ 使用说明 + 右上角「重新激活」按钮。
+ * 激活分步:输码 → (检查 + 强制装 service) → 连接 → 验证出口 IP → 一致才显示账号信息。
  *
- * 激活逻辑与原 nexthubx-activate 页一致(并入此卡片),依旧复用同一本地存储与同步链路。
+ *   idle       未激活 / 重激活:显示输入激活码表单
+ *   verifying  激活码已校验、配置已导入:进入「验证中」(账号不显示)
+ *              ├─ 子阶段 service   :检查 + 强制安装 TUN service(失败累计 > 3 → support)
+ *              ├─ 子阶段 connect   :开 TUN 连接
+ *              └─ 子阶段 probe     :轮询实际出口 IP,与 expectedExitIp 比对
+ *   activated  出口 IP 一致 → 显示账号信息(email/password + 使用说明 + 重激活)
+ *
+ * 出口不一致不在此卡片显示账号,改由全局 ExitMismatchGuard 全窗口警示 + 后台通知。
  */
+
+type VerifyPhase = 'service' | 'support' | 'connect' | 'probe'
+
+/** service 安装失败 / 被拒累计上限,超过即提示联系技术支持。 */
+const MAX_SERVICE_RETRIES = 3
+
 export const AccountCard = () => {
   const { t } = useTranslation()
   const { clientState, isActivated, refresh } = useNexthubxClient()
-  const { mutateSystemState } = useSystemState()
+  const { isServiceOk, mutateSystemState } = useSystemState()
+  const { installServiceAndRestartCore } = useServiceInstaller()
+  const { verge, mutateVerge, patchVerge } = useVerge()
 
   const [token, setToken] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [reactivating, setReactivating] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  const showForm = !isActivated || !clientState || reactivating
+  // 分步激活态:null = 未在验证;否则处于「验证中」的某个子阶段
+  const [verifyPhase, setVerifyPhase] = useState<VerifyPhase | null>(null)
+  const [serviceFailures, setServiceFailures] = useState(0)
+  const [installing, setInstalling] = useState(false)
+
+  // 验证中持续轮询实际出口 IP,交给共享守卫做比对(防误报 5 条件)
+  const verifying = verifyPhase !== null
+  const { data: ipInfo, refetch: refetchIp } = useIpInfoQuery()
+  const { status: exitStatus } = useNexthubxExitGuard({ actualIp: ipInfo?.ip })
+
+  // 账号信息显示门控:
+  // - 激活验证流程中(verifying)一律不显示(显示「验证中」);
+  // - 验证完成后,已激活且出口未被判定为不一致(match 或 条件不足的 null)即显示;
+  //   仅在**确证 mismatch**(防误报 5 条件全满足)时隐藏账号 + 由全局 ExitMismatchGuard 全窗口警示。
+  //   不一致是「确证才报」,未连接 / IP 未取到时 status=null,不应误隐藏已激活账号。
+  const showAccount =
+    isActivated &&
+    !reactivating &&
+    !verifying &&
+    Boolean(clientState) &&
+    exitStatus !== 'mismatch'
+
+  const showForm = !isActivated || !clientState || (reactivating && !verifying)
 
   const copy = useLockFn(async (value: string) => {
     try {
@@ -60,24 +105,80 @@ export const AccountCard = () => {
     }
   })
 
-  /**
-   * 激活成功后立即检测 TUN service 是否就绪;未就绪则刷新系统状态,
-   * 触发全局 ServiceGate(`_layout` 顶层挂载)弹出授权安装引导,
-   * 不等到连接时才发现。复用 ServiceGate 的安装/授权逻辑,避免重复实现 UAC 流程。
-   */
-  const ensureServiceReady = useCallback(async () => {
+  const enableTun = useCallback(
+    async (value: boolean) => {
+      mutateVerge({ ...verge, enable_tun_mode: value }, false)
+      await patchVerge({ enable_tun_mode: value })
+    },
+    [verge, mutateVerge, patchVerge],
+  )
+
+  // 强制安装 service(验证流程中的 b 步)
+  const onInstallService = useLockFn(async () => {
+    setInstalling(true)
     try {
-      const ok = await isServiceAvailable()
-      if (!ok) {
-        // 刷新系统状态 → ServiceGate 立即重新评估并弹出安装引导
-        await mutateSystemState()
-      }
-    } catch (err) {
-      console.error('[nexthubx] service readiness check failed', err)
-      // 检测失败时也刷新一次,交由全局 gate 兜底判断
+      await installServiceAndRestartCore()
       await mutateSystemState()
+      setServiceFailures(0)
+      // 安装成功 → 进入连接子阶段(由 effect 推进)
+    } catch (err) {
+      console.error('[nexthubx] service install failed', err)
+      setServiceFailures((c) => {
+        const next = c + 1
+        if (next > MAX_SERVICE_RETRIES) setVerifyPhase('support')
+        return next
+      })
+    } finally {
+      setInstalling(false)
     }
-  }, [mutateSystemState])
+  })
+
+  // 验证流程推进:service 就绪 → connect(开 TUN) → probe(轮询 IP)
+  const connectStartedRef = useRef(false)
+  useEffect(() => {
+    if (!verifying) {
+      connectStartedRef.current = false
+      return
+    }
+    if (verifyPhase === 'support') return
+
+    // service 子阶段:就绪则进 connect
+    if (verifyPhase === 'service') {
+      if (isServiceOk) setVerifyPhase('connect')
+      return
+    }
+
+    // connect 子阶段:开 TUN(仅触发一次),成功后进 probe
+    if (verifyPhase === 'connect') {
+      if (connectStartedRef.current) return
+      connectStartedRef.current = true
+      void (async () => {
+        try {
+          await enableTun(true)
+        } catch (err) {
+          console.error('[nexthubx] enable tun failed', err)
+        }
+        setVerifyPhase('probe')
+      })()
+      return
+    }
+  }, [verifying, verifyPhase, isServiceOk, enableTun])
+
+  // probe 子阶段:持续轮询 IP,直到守卫给出 match → 完成激活;mismatch 交全局警示
+  useEffect(() => {
+    if (verifyPhase !== 'probe') return
+    if (exitStatus === 'match') {
+      setVerifyPhase(null)
+      setReactivating(false)
+      return
+    }
+    const timer = setInterval(() => {
+      void refetchIp()
+    }, 5_000)
+    // 立即先取一次
+    void refetchIp()
+    return () => clearInterval(timer)
+  }, [verifyPhase, exitStatus, refetchIp])
 
   const onActivate = useLockFn(async () => {
     const trimmed = token.trim()
@@ -115,13 +216,20 @@ export const AccountCard = () => {
         expectedExitIp: result.expectedExitIp ?? prev?.expectedExitIp,
       })
 
-      // 激活成功后立即检测 TUN service 是否就绪;未就绪 → 引导安装
-      void ensureServiceReady()
-
       showNotice.success('nexthubx.activate.feedback.success')
       setToken('')
-      setReactivating(false)
       refresh()
+
+      // 进入「验证中」:先检查 service,再连接,再验证出口 IP(账号此时不显示)
+      setServiceFailures(0)
+      let serviceReady = false
+      try {
+        serviceReady = await isServiceAvailable()
+      } catch (svcErr) {
+        console.error('[nexthubx] service readiness check failed', svcErr)
+      }
+      await mutateSystemState()
+      setVerifyPhase(serviceReady ? 'connect' : 'service')
     } catch (err) {
       if (err instanceof ActivationInvalidError) {
         showNotice.error('nexthubx.activate.feedback.invalid')
@@ -134,13 +242,106 @@ export const AccountCard = () => {
     }
   })
 
+  const renderVerifying = () => {
+    // service 未就绪:强制安装引导
+    if (verifyPhase === 'service') {
+      return (
+        <Stack spacing={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ShieldRounded color="primary" />
+            <Typography variant="subtitle1">
+              {t('nexthubx.connect.gate.title')}
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {t('nexthubx.connect.gate.body')}
+          </Typography>
+          <Button
+            variant="contained"
+            disabled={installing}
+            onClick={() => void onInstallService()}
+            startIcon={
+              installing ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <ShieldRounded />
+              )
+            }
+          >
+            {installing
+              ? t('nexthubx.connect.gate.installing')
+              : serviceFailures > 0
+                ? t('nexthubx.connect.gate.retry')
+                : t('nexthubx.connect.gate.install')}
+          </Button>
+        </Stack>
+      )
+    }
+
+    // service 安装反复失败:联系技术支持
+    if (verifyPhase === 'support') {
+      return (
+        <Stack spacing={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SupportAgentRounded color="error" />
+            <Typography variant="subtitle1" color="error">
+              {t('nexthubx.connect.gate.supportTitle')}
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {t('nexthubx.connect.gate.supportBody')}
+          </Typography>
+          <Button
+            variant="outlined"
+            color="inherit"
+            disabled={installing}
+            onClick={() => {
+              setVerifyPhase('service')
+            }}
+          >
+            {t('nexthubx.connect.gate.retryAnyway')}
+          </Button>
+        </Stack>
+      )
+    }
+
+    // connect / probe:验证中(账号信息暂不显示)
+    const mismatch = exitStatus === 'mismatch'
+    return (
+      <Stack spacing={2} sx={{ alignItems: 'center', py: 2 }}>
+        {mismatch ? (
+          <Alert
+            severity="error"
+            variant="outlined"
+            icon={<WarningAmberRounded />}
+            sx={{ width: '100%' }}
+          >
+            <Typography variant="subtitle2">
+              {t('nexthubx.exitGuard.title')}
+            </Typography>
+            <Typography variant="body2">
+              {t('nexthubx.activate.verify.mismatchHint')}
+            </Typography>
+          </Alert>
+        ) : (
+          <>
+            <CircularProgress size={28} />
+            <Typography variant="body2" color="text.secondary">
+              {t('nexthubx.activate.verify.verifying')}
+            </Typography>
+          </>
+        )}
+      </Stack>
+    )
+  }
+
   return (
     <EnhancedCard
       title={t('nexthubx.account.title')}
       icon={<AccountCircleOutlined />}
       iconColor="primary"
       action={
-        isActivated && !reactivating ? (
+        showAccount ? (
           <Tooltip title={t('nexthubx.account.reactivate')} arrow>
             <IconButton
               size="small"
@@ -156,7 +357,9 @@ export const AccountCard = () => {
         ) : null
       }
     >
-      {showForm ? (
+      {verifying ? (
+        renderVerifying()
+      ) : showForm ? (
         <Stack spacing={2}>
           <Typography variant="body2" color="text.secondary">
             {t('nexthubx.activate.subtitle')}
@@ -200,7 +403,7 @@ export const AccountCard = () => {
             )}
           </Stack>
         </Stack>
-      ) : (
+      ) : showAccount ? (
         <Stack spacing={2}>
           <TextField
             fullWidth
@@ -274,6 +477,14 @@ export const AccountCard = () => {
               {t('nexthubx.account.usage.body')}
             </Typography>
           </Box>
+        </Stack>
+      ) : (
+        // 已激活但出口未通过(且非验证中)→ 不显示账号,仅提示
+        <Stack spacing={2} sx={{ alignItems: 'center', py: 2 }}>
+          <WarningAmberRounded color="error" sx={{ fontSize: 32 }} />
+          <Typography variant="body2" color="text.secondary">
+            {t('nexthubx.activate.verify.mismatchHint')}
+          </Typography>
         </Stack>
       )}
     </EnhancedCard>

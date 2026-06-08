@@ -13,6 +13,10 @@
     "submit": "Activate",
     "submitting": "Activating…",
     "reactivateTitle": "Reactivate",
+    "verify": {
+      "verifying": "Verifying connection and exit IP…",
+      "mismatchHint": "The current exit IP does not match your assigned exit. Your account information stays hidden until the connection is verified. Please check your connection or contact support."
+    },
     "feedback": {
       "success": "Activated successfully, entering main view",
       "empty": "Please enter an activation token",
@@ -89,6 +93,12 @@
     "configUpdated": "Proxy configuration updated",
     "revokedNotice": "Your seat has been revoked, please reactivate",
     "failed": "Sync failed, will retry later"
+  },
+  "exitGuard": {
+    "title": "Exit IP mismatch",
+    "body": "The current exit IP ({{actual}}) does not match your assigned exit ({{expected}}). Your traffic may be leaving through the wrong exit. Please check your connection or contact technical support.",
+    "notifyTitle": "NextHubX: exit IP mismatch",
+    "notifyBody": "Current exit ({{actual}}) differs from your assigned exit ({{expected}}). Please open NextHubX and check your connection."
   },
   "clashVergeConflict": {
     "title": "Clash Verge conflict detected",

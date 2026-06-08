@@ -251,6 +251,10 @@ export interface TranslationResources {
         title: string
         tokenLabel: string
         tokenPlaceholder: string
+        verify: {
+          mismatchHint: string
+          verifying: string
+        }
       }
       brand: string
       clashVergeConflict: {
@@ -299,6 +303,12 @@ export interface TranslationResources {
         systemProxyMode: string
         title: string
         tunMode: string
+      }
+      exitGuard: {
+        body: string
+        notifyBody: string
+        notifyTitle: string
+        title: string
       }
       nav: {
         account: string
