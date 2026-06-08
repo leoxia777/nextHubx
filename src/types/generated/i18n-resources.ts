@@ -717,6 +717,7 @@ export interface TranslationResources {
               themeMode: string
               themeSetting: string
               trayClickEvent: string
+              version: string
             }
             title: string
             trayOptions: {

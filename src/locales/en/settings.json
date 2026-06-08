@@ -176,7 +176,8 @@
           "hotkeySetting": "Hotkey Setting",
           "openLogsDir": "Open Logs Dir",
           "checkUpdates": "Check for Updates",
-          "showInMenuBar": "Show in Menu Bar"
+          "showInMenuBar": "Show in Menu Bar",
+          "version": "Version"
         }
       },
       "advanced": {

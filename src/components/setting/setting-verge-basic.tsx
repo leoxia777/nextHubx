@@ -1,4 +1,4 @@
-import { MenuItem, Select } from '@mui/material'
+import { MenuItem, Select, Typography } from '@mui/material'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -9,6 +9,7 @@ import { openLogsDir } from '@/services/cmds'
 import { supportedLanguages } from '@/services/i18n'
 import { showNotice } from '@/services/notice-service'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
+import { version } from '@root/package.json'
 
 import { GuardState } from './mods/guard-state'
 import { SettingItem, SettingList } from './mods/setting-comp'
@@ -145,6 +146,10 @@ const SettingVergeBasic = ({ onError }: Props) => {
         onClick={onCheckUpdate}
         label={t('settings.components.verge.basic.fields.checkUpdates')}
       />
+
+      <SettingItem label={t('settings.components.verge.basic.fields.version')}>
+        <Typography sx={{ py: '7px', pr: 1 }}>v{version}</Typography>
+      </SettingItem>
     </SettingList>
   )
 }

@@ -176,7 +176,8 @@
           "hotkeySetting": "热键设置",
           "openLogsDir": "日志目录",
           "checkUpdates": "检查更新",
-          "showInMenuBar": "在菜单栏显示"
+          "showInMenuBar": "在菜单栏显示",
+          "version": "版本号"
         }
       },
       "advanced": {

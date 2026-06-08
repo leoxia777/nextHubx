@@ -7,7 +7,7 @@
   },
   "activate": {
     "title": "激活 NextHubX",
-    "subtitle": "输入您的激活码以连接到 NextHubX 网络",
+    "subtitle": "输入激活码激活您的账号",
     "tokenLabel": "激活码",
     "tokenPlaceholder": "请输入激活码",
     "submit": "激活",

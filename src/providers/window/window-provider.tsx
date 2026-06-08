@@ -13,9 +13,12 @@ export const WindowProvider: React.FC<{ children: React.ReactNode }> = ({
   const [maximized, setMaximized] = useState<boolean | null>(null)
 
   const close = useCallback(async () => {
+    // 点红 X（自定义标题栏关闭按钮）→ 隐藏到后台，不退出应用。
+    // 退出仅通过托盘右键「退出」。这里直接 hide()，与 Rust 端
+    // CloseRequested 的 prevent_close + hide 行为保持一致，互为兜底。
     // Delay one frame so the UI can clear :hover before the window hides.
     await new Promise((resolve) => setTimeout(resolve, 20))
-    await currentWindow.close()
+    await currentWindow.hide()
   }, [currentWindow])
   const minimize = useCallback(async () => {
     // Delay one frame so the UI can clear :hover before the window hides.

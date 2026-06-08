@@ -7,7 +7,7 @@
   },
   "activate": {
     "title": "Activate NextHubX",
-    "subtitle": "Enter your activation token to connect to the NextHubX network",
+    "subtitle": "Enter your activation code to activate your account",
     "tokenLabel": "Activation token",
     "tokenPlaceholder": "Enter activation token",
     "submit": "Activate",

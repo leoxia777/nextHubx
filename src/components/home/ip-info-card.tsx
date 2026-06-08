@@ -54,16 +54,6 @@ const InfoItem = memo(({ label, value }: { label: string; value?: string }) => (
   </Box>
 ))
 
-// 获取国旗表情
-const getCountryFlag = (countryCode: string | undefined) => {
-  if (!countryCode) return ''
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map((char) => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
-}
-
 type CountDownState = XOR<
   {
     type: 'countdown'
@@ -263,122 +253,53 @@ export const IpInfoCard = () => {
         </Box>
       )
       break
-    default: // Normal render
+    default: // Normal render — 仅展示 IP 地址 + ASN 两项
       mainElement = (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'row',
-              flex: 1,
-              overflow: 'hidden',
-            }}
-          >
-            {/* 左侧：国家和IP地址 */}
-            <Box sx={{ width: '40%', overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, overflow: 'hidden' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ flexShrink: 0 }}
+              >
+                {t('home.components.ipInfo.labels.ip')}:
+              </Typography>
               <Box
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  mb: 1,
+                  ml: 1,
                   overflow: 'hidden',
+                  maxWidth: 'calc(100% - 30px)',
                 }}
               >
-                <Box
-                  component="span"
-                  sx={{
-                    fontSize: '1.5rem',
-                    mr: 1,
-                    display: 'inline-block',
-                    width: 28,
-                    textAlign: 'center',
-                    flexShrink: 0,
-                    fontFamily: '"twemoji mozilla", sans-serif',
-                  }}
-                >
-                  {getCountryFlag(ipInfo?.country_code)}
-                </Box>
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    fontWeight: 'medium',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    maxWidth: '100%',
-                  }}
-                >
-                  {ipInfo?.country ||
-                    t('home.components.ipInfo.labels.unknown')}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  sx={{ flexShrink: 0 }}
-                >
-                  {t('home.components.ipInfo.labels.ip')}:
-                </Typography>
-                <Box
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    ml: 1,
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem',
                     overflow: 'hidden',
-                    maxWidth: 'calc(100% - 30px)',
+                    textOverflow: 'ellipsis',
+                    wordBreak: 'break-all',
                   }}
                 >
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    {showIp ? ipInfo?.ip : '••••••••••'}
-                  </Typography>
-                  <IconButton size="small" onClick={toggleShowIp}>
-                    {showIp ? (
-                      <VisibilityOffOutlined fontSize="small" />
-                    ) : (
-                      <VisibilityOutlined fontSize="small" />
-                    )}
-                  </IconButton>
-                </Box>
+                  {showIp ? ipInfo?.ip : '••••••••••'}
+                </Typography>
+                <IconButton size="small" onClick={toggleShowIp}>
+                  {showIp ? (
+                    <VisibilityOffOutlined fontSize="small" />
+                  ) : (
+                    <VisibilityOutlined fontSize="small" />
+                  )}
+                </IconButton>
               </Box>
-
-              <InfoItem
-                label={t('home.components.ipInfo.labels.asn')}
-                value={ipInfo?.asn ? `AS${ipInfo.asn}` : 'N/A'}
-              />
             </Box>
 
-            {/* 右侧：组织、ISP和位置信息 */}
-            <Box sx={{ width: '60%', overflow: 'auto' }}>
-              <InfoItem
-                label={t('home.components.ipInfo.labels.isp')}
-                value={ipInfo?.organization}
-              />
-              <InfoItem
-                label={t('home.components.ipInfo.labels.org')}
-                value={ipInfo?.asn_organization}
-              />
-              <InfoItem
-                label={t('home.components.ipInfo.labels.location')}
-                value={[ipInfo?.city, ipInfo?.region]
-                  .filter(Boolean)
-                  .join(', ')}
-              />
-              <InfoItem
-                label={t('home.components.ipInfo.labels.timezone')}
-                value={ipInfo?.timezone}
-              />
-            </Box>
+            <InfoItem
+              label={t('home.components.ipInfo.labels.asn')}
+              value={ipInfo?.asn ? `AS${ipInfo.asn}` : 'N/A'}
+            />
           </Box>
 
           <Box
@@ -399,16 +320,6 @@ export const IpInfoCard = () => {
               {countdown.type === 'countdown'
                 ? `: ${countdown.remainingSeconds}s`
                 : '...'}
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{
-                textOverflow: 'ellipsis',
-                overflow: 'hidden',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {`${ipInfo?.country_code ?? 'N/A'}, ${ipInfo?.longitude?.toFixed(2) ?? 'N/A'}, ${ipInfo?.latitude?.toFixed(2) ?? 'N/A'}`}
             </Typography>
           </Box>
         </Box>
