@@ -92,6 +92,8 @@ export const useNexthubxAutoSync = () => {
         identityPassword: data.identityPassword,
         configFingerprint: data.configFingerprint,
         profileUid,
+        // 后端缺省时保留旧值(老后端/未分配),避免误清空导致比对失效
+        expectedExitIp: data.expectedExitIp ?? state.expectedExitIp,
       }
       await saveClientState(next)
       qc.invalidateQueries({ queryKey: CLIENT_STATE_KEY })

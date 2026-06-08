@@ -83,6 +83,10 @@
       },
       "errors": {
         "load": "获取 IP 信息失败"
+      },
+      "exitCheck": {
+        "match": "出口匹配",
+        "mismatch": "当前出口 IP（{{actual}}）与分配的出口（{{expected}}）不一致,可能未正确连接代理或走错出口,请检查连接。"
       }
     },
     "currentProxy": {

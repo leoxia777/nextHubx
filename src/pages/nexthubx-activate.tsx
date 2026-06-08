@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
 import { BasePage } from '@/components/base'
+import { useSystemState } from '@/hooks/use-system-state'
+import { isServiceAvailable } from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
 import {
@@ -20,6 +22,7 @@ import { showNotice } from '@/services/notice-service'
 const NexthubxActivatePage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { mutateSystemState } = useSystemState()
   const [token, setToken] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -55,7 +58,20 @@ const NexthubxActivatePage = () => {
         profileUid,
         // 激活响应不含 fingerprint;首次同步用 active 结果回填
         configFingerprint: prev?.configFingerprint,
+        // 出口比对用:后端缺省时回退到上次值(老后端兼容)
+        expectedExitIp: result.expectedExitIp ?? prev?.expectedExitIp,
       })
+
+      // 激活成功后立即检测 TUN service 是否就绪;未就绪 → 刷新系统状态触发
+      // 全局 ServiceGate 弹出授权安装引导(不等连接时才发现)
+      try {
+        if (!(await isServiceAvailable())) {
+          await mutateSystemState()
+        }
+      } catch (svcErr) {
+        console.error('[nexthubx] service readiness check failed', svcErr)
+        await mutateSystemState()
+      }
 
       showNotice.success('nexthubx.activate.feedback.success')
       navigate('/nexthubx/connect')

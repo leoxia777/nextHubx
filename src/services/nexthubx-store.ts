@@ -26,6 +26,8 @@ export interface NexthubxClientState {
   configFingerprint?: string
   /** nextHubx 托管的本地 profile uid,用于后续同步时复用更新而非反复新建。 */
   profileUid?: string
+  /** 分配给该席位的出口公网 IP,用于在 IP 信息卡片中比对实际出口是否一致。 */
+  expectedExitIp?: string
 }
 
 export async function loadClientState(): Promise<NexthubxClientState | null> {

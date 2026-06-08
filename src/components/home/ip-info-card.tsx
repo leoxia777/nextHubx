@@ -1,10 +1,19 @@
 import {
+  CheckCircleOutlined,
   LocationOnOutlined,
   RefreshOutlined,
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from '@mui/icons-material'
-import { Box, Button, IconButton, Skeleton, Typography } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Skeleton,
+  Typography,
+} from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { useEffect } from 'foxact/use-abortable-effect'
@@ -20,6 +29,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
 import { getIpInfo } from '@/services/api'
 
 import { EnhancedCard } from './enhanced-card'
@@ -107,6 +117,18 @@ export const IpInfoCard = () => {
   })
 
   const { data: ipInfo, error, isLoading, refetch: mutate } = useIPInfo()
+
+  // 出口 IP 自动比对(无需用户确认):
+  // - expectedExitIp 为空(未同步/老数据)→ 不比对、不显示;
+  // - 实际 IP 与分配出口一致 → 显示绿色「出口匹配」标;
+  // - 不一致 → 显著红色警示。
+  const { clientState } = useNexthubxClient()
+  const expectedExitIp = clientState?.expectedExitIp?.trim()
+  const actualIp = ipInfo?.ip?.trim()
+  const exitMatch = useMemo<'match' | 'mismatch' | null>(() => {
+    if (!expectedExitIp || !actualIp) return null
+    return expectedExitIp === actualIp ? 'match' : 'mismatch'
+  }, [expectedExitIp, actualIp])
 
   // function useEffectEvent
   const onCountdownTick = useEffectEvent(async () => {
@@ -313,6 +335,30 @@ export const IpInfoCard = () => {
               label={t('home.components.ipInfo.labels.asn')}
               value={ipInfo?.asn ? `AS${ipInfo.asn}` : 'N/A'}
             />
+
+            {exitMatch === 'match' && (
+              <Chip
+                size="small"
+                color="success"
+                variant="outlined"
+                icon={<CheckCircleOutlined fontSize="small" />}
+                label={t('home.components.ipInfo.exitCheck.match')}
+                sx={{ mt: 0.5 }}
+              />
+            )}
+
+            {exitMatch === 'mismatch' && (
+              <Alert
+                severity="error"
+                variant="outlined"
+                sx={{ mt: 1, py: 0, fontSize: '0.75rem', alignItems: 'center' }}
+              >
+                {t('home.components.ipInfo.exitCheck.mismatch', {
+                  actual: actualIp,
+                  expected: expectedExitIp,
+                })}
+              </Alert>
+            )}
           </Box>
 
           <Box

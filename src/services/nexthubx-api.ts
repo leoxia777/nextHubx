@@ -25,6 +25,8 @@ export interface ActivateResult {
   identityEmail: string
   identityPassword: string
   proxyConfig: ProxyConfig
+  /** 分配给该席位的出口公网 IP,客户端用于比对实际出口。可能缺省(老后端/未分配)。 */
+  expectedExitIp?: string
 }
 
 /** GET /api/client/sync 响应(active)。 */
@@ -34,6 +36,8 @@ export interface SyncActiveResult {
   identityEmail: string
   identityPassword: string
   configFingerprint: string
+  /** 分配给该席位的出口公网 IP,客户端用于比对实际出口。可能缺省(老后端/未分配)。 */
+  expectedExitIp?: string
 }
 
 export type SyncResult =

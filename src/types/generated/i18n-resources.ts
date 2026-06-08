@@ -81,6 +81,10 @@ export interface TranslationResources {
           errors: {
             load: string
           }
+          exitCheck: {
+            match: string
+            mismatch: string
+          }
           labels: {
             asn: string
             autoRefresh: string

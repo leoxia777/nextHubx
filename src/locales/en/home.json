@@ -83,6 +83,10 @@
       },
       "errors": {
         "load": "Failed to get IP info"
+      },
+      "exitCheck": {
+        "match": "Exit matched",
+        "mismatch": "Current exit IP ({{actual}}) differs from your assigned exit ({{expected}}). The proxy may not be connected or traffic is leaving through the wrong exit. Please check your connection."
       }
     },
     "currentProxy": {

@@ -17,10 +17,12 @@ import {
 } from '@mui/material'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { useLockFn } from 'ahooks'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
+import { useSystemState } from '@/hooks/use-system-state'
+import { isServiceAvailable } from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
 import { loadClientState, saveClientState } from '@/services/nexthubx-store'
@@ -40,6 +42,7 @@ import { EnhancedCard } from './enhanced-card'
 export const AccountCard = () => {
   const { t } = useTranslation()
   const { clientState, isActivated, refresh } = useNexthubxClient()
+  const { mutateSystemState } = useSystemState()
 
   const [token, setToken] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -56,6 +59,25 @@ export const AccountCard = () => {
       console.error('[nexthubx] copy failed', err)
     }
   })
+
+  /**
+   * 激活成功后立即检测 TUN service 是否就绪;未就绪则刷新系统状态,
+   * 触发全局 ServiceGate(`_layout` 顶层挂载)弹出授权安装引导,
+   * 不等到连接时才发现。复用 ServiceGate 的安装/授权逻辑,避免重复实现 UAC 流程。
+   */
+  const ensureServiceReady = useCallback(async () => {
+    try {
+      const ok = await isServiceAvailable()
+      if (!ok) {
+        // 刷新系统状态 → ServiceGate 立即重新评估并弹出安装引导
+        await mutateSystemState()
+      }
+    } catch (err) {
+      console.error('[nexthubx] service readiness check failed', err)
+      // 检测失败时也刷新一次,交由全局 gate 兜底判断
+      await mutateSystemState()
+    }
+  }, [mutateSystemState])
 
   const onActivate = useLockFn(async () => {
     const trimmed = token.trim()
@@ -89,7 +111,12 @@ export const AccountCard = () => {
         profileUid,
         // 激活响应不含 fingerprint;首次同步用 active 结果回填
         configFingerprint: prev?.configFingerprint,
+        // 出口比对用:后端缺省时回退到上次值(老后端兼容)
+        expectedExitIp: result.expectedExitIp ?? prev?.expectedExitIp,
       })
+
+      // 激活成功后立即检测 TUN service 是否就绪;未就绪 → 引导安装
+      void ensureServiceReady()
 
       showNotice.success('nexthubx.activate.feedback.success')
       setToken('')

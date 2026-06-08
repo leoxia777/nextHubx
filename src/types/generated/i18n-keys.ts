@@ -73,6 +73,8 @@ export const translationKeys = [
   'home.components.ipInfo.labels.autoRefresh',
   'home.components.ipInfo.labels.unknown',
   'home.components.ipInfo.errors.load',
+  'home.components.ipInfo.exitCheck.match',
+  'home.components.ipInfo.exitCheck.mismatch',
   'home.components.currentProxy.title',
   'home.components.currentProxy.actions.refreshDelay',
   'home.components.currentProxy.labels.globalMode',
