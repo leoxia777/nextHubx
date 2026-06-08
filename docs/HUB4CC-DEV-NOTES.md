@@ -268,3 +268,46 @@ tauri CLI 警告:`com.nexthubx.app` 以 `.app` 结尾,与 macOS app bundle 扩�
 - 前端三绿:`pnpm typecheck` / `pnpm lint`(--max-warnings=0) / `pnpm web:build` 全过。
 - 未做:`tauri build`、打包、安装、push —— 按要求代码攒在分支,随下次出版生效。
 - 未实测:真机上官方版运行时弹窗的实际触发(无 GUI 环境)。逻辑已单点收敛在纯函数 `detect_official_clash_verge`,后续可补单测。
+
+---
+
+## 最终 spec UI 重构(2026-06,定制 CVR 原生 Home/Logs/Test/Settings)
+
+### Tabs(`src/pages/_routers.tsx`)
+- 默认导航改为 **Home / Logs / Test / Settings**(`defaultNavItems`),`/` 重定向到 `/home`。
+- `nexthubx-connect/activate/account` 三页移出默认导航,仅注册路由(`hiddenRouteItems`)保持可达;激活页兼作 Account 卡片「重新激活」跳转(实际重新激活已内联在卡片)。
+- `advancedNavItems` = Proxies/Profiles/Connections/Rules/Unlock,默认隐藏(高级入口开启才显示)。
+- i18n:`layout.json` tabs 原 `unlock="测试/Test"` 修正为 `unlock="解锁/Unlock"`,新增 `test="测试/Test"`(Test tab 指向原生 `test.tsx` Website Tests 页)。
+
+### Home(`src/pages/home.tsx` + `components/home/account-card.tsx`)
+- 仅两张卡:① Account(新建)② IP Information(原生)。移除首页设置弹窗与全部其他卡片(profile/proxy/network/mode/traffic/test/clashinfo/systeminfo/proxy-tun-card)。
+- Account 卡片(`account-card.tsx`,用 `EnhancedCard`,尺寸同 Clash Info 卡):未激活→输入激活码+激活(逻辑与原 activate 页一致,复用 nexthubx-store/profile);已激活→email/password 可复制 + 使用说明(`nexthubx.account.usage`)+ 右上角重新激活图标按钮(切回输入态)。
+
+### Settings(`settings.tsx` + setting-system/setting-verge-basic)
+- 删除右上角三个按钮;仅保留 System + Basic 两组。
+- System:移除 System Proxy / Silent Start;TUN/Auto Launch/DNS Override/Unified Delay 四项渲染为 checked+disabled 只读开关 + locked tooltip,挂载时 effect 强制底层置开(tun/autolaunch/dns_settings→verge,unified-delay→clash,dns 另调 `apply_dns_config(true)`);新增 Allow LAN(`clash['allow-lan']`,默认关,正常切换)。
+- Basic(原 Verge Basic,改名 `basic.title`→「基础设置/Basic Setting」):保留 Language/Theme Mode/Theme Settings;新增 Open Logs Dir、Check for Updates、Show in Menu Bar。
+  - **Show in Menu Bar backing 字段坑**:`IVergeConfig.enable_tray_icon` 在 `global.d.ts` 被注释掉(macOS-only 且 layout-viewer 里也是注释态),直接用会 TS2339。改用 `menu_icon`('monochrome'|'colorful'|'disable'):开→'monochrome',关→'disable'。
+- `SettingClash` / `SettingVergeAdvanced` 组件文件保留但不再被 settings.tsx 引用(未删,避免误伤其内部 viewer 复用)。
+- **Network shortcuts**:仓内无独立「Network shortcuts」UI 区块,系统代理相关只存在于已移除的 hotkey-viewer。spec 为条件性保留(「若含…酌情」),故无单独处理。
+
+### 关闭按钮(#4,无需改 Rust)
+- 现状已符合 spec:`src-tauri/src/lib.rs` `handle_window_close` 对主窗口 `CloseRequested` 调 `api.prevent_close()` + `window.hide()`(隐藏到后台,不退出);macOS 还切 activation policy 到 accessory。
+- 托盘已有唯一退出途径:`core/tray/menu_def.rs` 的 `EXIT` 菜单项 → `core/tray/mod.rs` `MenuIds::EXIT => feat::quit()`。未改任何 Rust。
+
+### Service 强制引导(A3,`components/layout/service-gate.tsx`)
+- 全局 gate,挂在 `_layout.tsx` 顶层(紧邻 ClashVergeConflictDialog)。`isServiceOk` 为假且非启动 loading → 强制弹不可关 Dialog(无 onClose,Esc/遮罩无效);进入即触发一次 `mutateSystemState`。
+- 安装走 `useServiceInstaller().installServiceAndRestartCore`;失败累加 failureCount,`> 3`(MAX_RETRIES=3)切「请联系技术支持」态(仍留「仍要重试」)。**无系统代理降级**(与已废弃 connect 页的 fallback 逻辑相反)。
+- MUI 坑:本版本 `DialogProps` 无 `disableEscapeKeyDown`,去掉该 prop——不传 onClose 即天然不可关。
+
+### C9 自动同步保留
+- `useNexthubxAutoSync`(`_layout.tsx` 挂载一次)未改动。
+
+### 待确认 / 风险
+- `start_page` 选项已从 Basic 设置移除;若旧 verge config 持久化了 `/nexthubx/connect`,启动跳转可能落到已隐藏页(路由仍可达,不崩,但非 Home)。如需可在启动处把无效 start_page 回退到 `/home`。未处理。
+- 锁定项 effect 每次进 Settings 页都会校验并(必要时)patch;已用 `enforcedRef` 防同一挂载内重复。锁定项 reload sing-box 的副作用由底层 patchVerge/patchClash 链路承担,未额外处理回滚。
+- Service gate 仅在真机/有 GUI 时能验证授权弹窗实际行为;逻辑收敛单点。
+
+### 校验结果
+- 前端三绿:`pnpm typecheck` / `pnpm lint`(--max-warnings=0)/ `pnpm web:build` 全过。`pnpm i18n:types` 已重生成(879 keys)。
+- `cargo check`(src-tauri):通过(无 Rust 改动)。

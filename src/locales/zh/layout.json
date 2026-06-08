@@ -8,7 +8,8 @@
         "connections": "连 接",
         "rules": "规 则",
         "logs": "日 志",
-        "unlock": "测 试",
+        "test": "测 试",
+        "unlock": "解 锁",
         "settings": "设 置"
       },
       "menu": {

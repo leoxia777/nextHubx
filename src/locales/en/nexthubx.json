@@ -50,6 +50,17 @@
     "feedback": {
       "connectFailed": "Failed to connect, please retry",
       "serviceUnavailable": "Network service unavailable, please reinstall"
+    },
+    "gate": {
+      "title": "Network service required",
+      "body": "NextHubX needs to install a background network service to manage the global proxy adapter. The system will request administrator privileges (UAC on Windows / password on macOS). This is required only once; the app cannot be used until it is installed.",
+      "install": "Authorize and install",
+      "installing": "Installing service…",
+      "retry": "Retry install",
+      "failed": "Installation failed, please retry",
+      "supportTitle": "Please contact support",
+      "supportBody": "The network service could not be installed after several attempts. Please contact technical support for help and provide your system information.",
+      "retryAnyway": "Retry anyway"
     }
   },
   "account": {
@@ -62,6 +73,10 @@
     "hidePassword": "Hide password",
     "empty": "No account information yet, please activate first",
     "reactivate": "Reactivate",
+    "usage": {
+      "title": "How to use this account",
+      "body": "Use the Google account above (email + password) to sign in to the team services provisioned for you. Do not change the password, bind a personal phone number, or enable two-factor authentication, and do not use it for personal purposes. This account is for your work use only; contact your administrator if you run into sign-in issues."
+    },
     "syncStatus": {
       "label": "Sync status",
       "active": "Active",

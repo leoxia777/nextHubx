@@ -26,6 +26,7 @@ import { ClashVergeConflictDialog } from '@/components/layout/clash-verge-confli
 import { LayoutItem } from '@/components/layout/layout-item'
 import { LayoutTraffic } from '@/components/layout/layout-traffic'
 import { NoticeManager } from '@/components/layout/notice-manager'
+import { ServiceGate } from '@/components/layout/service-gate'
 import { UpdateButton } from '@/components/layout/update-button'
 import { WindowControls } from '@/components/layout/window-controller'
 import { useI18n } from '@/hooks/use-i18n'
@@ -268,6 +269,8 @@ const Layout = () => {
       <NoticeManager position={verge?.notice_position} />
       {/* 官方 Clash Verge 冲突提醒(启动检测 + 后台轮询) */}
       <ClashVergeConflictDialog />
+      {/* Service 强制引导(A3):未就绪强制安装,不降级 */}
+      <ServiceGate />
       <div
         style={{
           animation: 'fadeIn 0.5s',

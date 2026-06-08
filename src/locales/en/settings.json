@@ -15,11 +15,15 @@
         "systemProxy": "System Proxy"
       },
       "tooltips": {
-        "silentStart": "Start the program in background mode without displaying the panel"
+        "silentStart": "Start the program in background mode without displaying the panel",
+        "locked": "Managed by the system service and kept enabled."
       },
       "fields": {
         "autoLaunch": "Auto Launch",
-        "silentStart": "Silent Start"
+        "silentStart": "Silent Start",
+        "dnsOverride": "DNS Override",
+        "unifiedDelay": "Unified Delay",
+        "allowLan": "Allow LAN"
       },
       "notifications": {
         "tunMode": {
@@ -150,7 +154,7 @@
   "components": {
     "verge": {
       "basic": {
-        "title": "NextHubX Basic Setting",
+        "title": "Basic Setting",
         "actions": {
           "browse": "Browse"
         },
@@ -169,7 +173,10 @@
           "themeSetting": "Theme Setting",
           "layoutSetting": "Layout Setting",
           "misc": "Miscellaneous",
-          "hotkeySetting": "Hotkey Setting"
+          "hotkeySetting": "Hotkey Setting",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "showInMenuBar": "Show in Menu Bar"
         }
       },
       "advanced": {

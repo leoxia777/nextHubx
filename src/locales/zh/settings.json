@@ -15,11 +15,15 @@
         "systemProxy": "系统代理"
       },
       "tooltips": {
-        "silentStart": "程序启动时以后台模式运行，不显示程序面板"
+        "silentStart": "程序启动时以后台模式运行，不显示程序面板",
+        "locked": "由系统服务托管，保持开启。"
       },
       "fields": {
         "autoLaunch": "开机自启",
-        "silentStart": "静默启动"
+        "silentStart": "静默启动",
+        "dnsOverride": "DNS 覆写",
+        "unifiedDelay": "统一延迟",
+        "allowLan": "局域网连接"
       },
       "notifications": {
         "tunMode": {
@@ -150,7 +154,7 @@
   "components": {
     "verge": {
       "basic": {
-        "title": "NextHubX 基础设置",
+        "title": "基础设置",
         "actions": {
           "browse": "浏览"
         },
@@ -169,7 +173,10 @@
           "themeSetting": "主题设置",
           "layoutSetting": "界面设置",
           "misc": "杂项设置",
-          "hotkeySetting": "热键设置"
+          "hotkeySetting": "热键设置",
+          "openLogsDir": "日志目录",
+          "checkUpdates": "检查更新",
+          "showInMenuBar": "在菜单栏显示"
         }
       },
       "advanced": {

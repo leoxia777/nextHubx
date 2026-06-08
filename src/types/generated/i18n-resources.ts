@@ -193,6 +193,7 @@ export interface TranslationResources {
             proxies: string
             rules: string
             settings: string
+            test: string
             unlock: string
           }
         }
@@ -225,6 +226,10 @@ export interface TranslationResources {
           syncing: string
         }
         title: string
+        usage: {
+          body: string
+          title: string
+        }
       }
       activate: {
         feedback: {
@@ -260,6 +265,17 @@ export interface TranslationResources {
         feedback: {
           connectFailed: string
           serviceUnavailable: string
+        }
+        gate: {
+          body: string
+          failed: string
+          install: string
+          installing: string
+          retry: string
+          retryAnyway: string
+          supportBody: string
+          supportTitle: string
+          title: string
         }
         service: {
           guideBody: string
@@ -688,11 +704,14 @@ export interface TranslationResources {
               browse: string
             }
             fields: {
+              checkUpdates: string
               copyEnvType: string
               hotkeySetting: string
               language: string
               layoutSetting: string
               misc: string
+              openLogsDir: string
+              showInMenuBar: string
               startPage: string
               startupScript: string
               themeMode: string
@@ -1276,8 +1295,11 @@ export interface TranslationResources {
         }
         system: {
           fields: {
+            allowLan: string
             autoLaunch: string
+            dnsOverride: string
             silentStart: string
+            unifiedDelay: string
           }
           notifications: {
             tunMode: {
@@ -1291,6 +1313,7 @@ export interface TranslationResources {
             tunMode: string
           }
           tooltips: {
+            locked: string
             silentStart: string
           }
         }

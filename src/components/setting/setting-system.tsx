@@ -1,94 +1,113 @@
-import React, { useRef } from 'react'
+import { Switch as MuiSwitch } from '@mui/material'
+import { invoke } from '@tauri-apps/api/core'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { DialogRef, Switch, TooltipIcon } from '@/components/base'
-import ProxyControlSwitches from '@/components/shared/proxy-control-switches'
+import { Switch, TooltipIcon } from '@/components/base'
+import { useClash } from '@/hooks/use-clash'
 import { useVerge } from '@/hooks/use-verge'
 
 import { GuardState } from './mods/guard-state'
 import { SettingList, SettingItem } from './mods/setting-comp'
-import { SysproxyViewer } from './mods/sysproxy-viewer'
-import { TunViewer } from './mods/tun-viewer'
 
 interface Props {
   onError?: (err: Error) => void
 }
 
+/**
+ * System Setting(最终 spec §3)。
+ *
+ * - 移除 System Proxy、Silent Start。
+ * - TUN mode / Auto Launch / DNS Override / Unified Delay 四项**锁定为「开且不可关」**:
+ *   渲染成 checked + disabled 的只读开关 + tooltip 说明原因;挂载时强制把底层值置为开。
+ * - 新增 Allow LAN(正常切换,默认关;底层为 clash `allow-lan`)。
+ */
 const SettingSystem = ({ onError }: Props) => {
   const { t } = useTranslation()
 
-  const { verge, mutateVerge, patchVerge } = useVerge()
+  const { verge, patchVerge } = useVerge()
+  const { clash, mutateClash, patchClash } = useClash()
 
-  const { enable_auto_launch, enable_silent_start } = verge ?? {}
+  const { 'allow-lan': allowLan } = clash ?? {}
 
-  const sysproxyRef = useRef<DialogRef>(null)
-  const tunRef = useRef<DialogRef>(null)
+  const enforcedRef = useRef(false)
+  const lockedTooltip = t('settings.sections.system.tooltips.locked')
+
+  // 挂载时强制把四项锁定项置为开(保持 DB / 运行态一致,UI 同时只读展示为开)。
+  useEffect(() => {
+    if (enforcedRef.current) return
+    if (!verge || !clash) return
+    enforcedRef.current = true
+
+    void (async () => {
+      try {
+        if (verge.enable_tun_mode !== true) {
+          await patchVerge({ enable_tun_mode: true })
+        }
+        if (verge.enable_auto_launch !== true) {
+          await patchVerge({ enable_auto_launch: true })
+        }
+        if (clash['unified-delay'] !== true) {
+          await patchClash({ 'unified-delay': true })
+        }
+        if (verge.enable_dns_settings !== true) {
+          await patchVerge({ enable_dns_settings: true })
+          await invoke('apply_dns_config', { apply: true })
+        }
+      } catch (err) {
+        console.error('[nexthubx] enforce locked system settings failed', err)
+      }
+    })()
+  }, [verge, clash, patchVerge, patchClash])
 
   const onSwitchFormat = (
     _e: React.ChangeEvent<HTMLInputElement>,
     value: boolean,
   ) => value
-  const onChangeData = (patch: Partial<IVergeConfig>) => {
-    mutateVerge({ ...verge, ...patch }, false)
-  }
+
+  // 锁定项:只读、强制 checked、disabled,附 tooltip 说明
+  const lockedSwitch = (
+    <MuiSwitch edge="end" checked disabled />
+  )
 
   return (
     <SettingList title={t('settings.sections.system.title')}>
-      <SysproxyViewer ref={sysproxyRef} />
-      <TunViewer ref={tunRef} />
-
-      <ProxyControlSwitches
+      <SettingItem
         label={t('settings.sections.system.toggles.tunMode')}
-        onError={onError}
-      />
-
-      <ProxyControlSwitches
-        label={t('settings.sections.system.toggles.systemProxy')}
-        onError={onError}
-      />
-
-      <SettingItem label={t('settings.sections.system.fields.autoLaunch')}>
-        <GuardState
-          value={enable_auto_launch ?? false}
-          valueProps="checked"
-          onCatch={onError}
-          onFormat={onSwitchFormat}
-          onChange={(e) => {
-            onChangeData({ enable_auto_launch: e })
-          }}
-          onGuard={async (e) => {
-            try {
-              // 先触发UI更新立即看到反馈
-              onChangeData({ enable_auto_launch: e })
-              await patchVerge({ enable_auto_launch: e })
-              return Promise.resolve()
-            } catch (error) {
-              // 如果出错，恢复原始状态
-              onChangeData({ enable_auto_launch: !e })
-              return Promise.reject(error)
-            }
-          }}
-        >
-          <Switch edge="end" />
-        </GuardState>
+        extra={<TooltipIcon title={lockedTooltip} sx={{ opacity: '0.7' }} />}
+      >
+        {lockedSwitch}
       </SettingItem>
 
       <SettingItem
-        label={t('settings.sections.system.fields.silentStart')}
-        extra={
-          <TooltipIcon
-            title={t('settings.sections.system.tooltips.silentStart')}
-            sx={{ opacity: '0.7' }}
-          />
-        }
+        label={t('settings.sections.system.fields.autoLaunch')}
+        extra={<TooltipIcon title={lockedTooltip} sx={{ opacity: '0.7' }} />}
       >
+        {lockedSwitch}
+      </SettingItem>
+
+      <SettingItem
+        label={t('settings.sections.system.fields.dnsOverride')}
+        extra={<TooltipIcon title={lockedTooltip} sx={{ opacity: '0.7' }} />}
+      >
+        {lockedSwitch}
+      </SettingItem>
+
+      <SettingItem
+        label={t('settings.sections.system.fields.unifiedDelay')}
+        extra={<TooltipIcon title={lockedTooltip} sx={{ opacity: '0.7' }} />}
+      >
+        {lockedSwitch}
+      </SettingItem>
+
+      <SettingItem label={t('settings.sections.system.fields.allowLan')}>
         <GuardState
-          value={enable_silent_start ?? false}
+          value={allowLan ?? false}
           valueProps="checked"
           onCatch={onError}
           onFormat={onSwitchFormat}
-          onChange={(e) => onChangeData({ enable_silent_start: e })}
-          onGuard={(e) => patchVerge({ enable_silent_start: e })}
+          onChange={(e) => mutateClash((old) => ({ ...old!, 'allow-lan': e }), false)}
+          onGuard={(e) => patchClash({ 'allow-lan': e })}
         >
           <Switch edge="end" />
         </GuardState>

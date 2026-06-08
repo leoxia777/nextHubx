@@ -50,6 +50,17 @@
     "feedback": {
       "connectFailed": "连接失败，请重试",
       "serviceUnavailable": "网络服务不可用，请重新安装"
+    },
+    "gate": {
+      "title": "需要安装网络服务",
+      "body": "NextHubX 需要安装一个后台网络服务以接管全局代理网卡。安装时系统会请求管理员权限(Windows 弹出 UAC / macOS 输入密码),整个过程仅需一次。未安装将无法使用。",
+      "install": "授权并安装",
+      "installing": "正在安装服务…",
+      "retry": "重试安装",
+      "failed": "安装失败,请重试",
+      "supportTitle": "请联系技术支持",
+      "supportBody": "多次尝试安装网络服务均未成功。请联系技术支持获取帮助,并提供本机环境信息。",
+      "retryAnyway": "仍要重试"
     }
   },
   "account": {
@@ -62,6 +73,10 @@
     "hidePassword": "隐藏密码",
     "empty": "暂无账号信息，请先完成激活",
     "reactivate": "重新激活",
+    "usage": {
+      "title": "如何使用该账号",
+      "body": "请使用上方的 Google 账号(邮箱 + 密码)登录团队为你开通的各项服务。请勿修改密码、勿绑定个人手机或开启两步验证、勿用于私人用途;账号仅限本人在公司业务范围内使用,如遇登录异常请联系管理员。"
+    },
     "syncStatus": {
       "label": "同步状态",
       "active": "正常",
