@@ -1,0 +1,55 @@
+name: Deploy download page
+
+# 把 download/ 部署到 Cloudflare Pages(download.nexthubx.com)。
+# 触发:push 到 main 且改了 download/**(或本 workflow 自身)→ 自动部署;也可手动 workflow_dispatch。
+# 解决「改了 download/index.html 但线上不更新」——页面随代码一起上,不再手动 wrangler。
+#
+# 需在 nextHubx 仓库配置(Settings → Secrets and variables → Actions):
+#   Secret    CLOUDFLARE_API_TOKEN       —— 必须含 **Account · Cloudflare Pages · Edit** 权限
+#   Secret    CLOUDFLARE_ACCOUNT_ID
+#   Variable  CLOUDFLARE_PAGES_PROJECT   —— CF Pages 项目名(绑定 download.nexthubx.com 的那个)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'download/**'
+      - '.github/workflows/deploy-download-page.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-download-page
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy download/ → Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Guard — required config present
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          MISSING=""
+          [ -z "$TOKEN" ]   && MISSING="$MISSING CLOUDFLARE_API_TOKEN(secret)"
+          [ -z "$ACCT" ]    && MISSING="$MISSING CLOUDFLARE_ACCOUNT_ID(secret)"
+          [ -z "$PROJECT" ] && MISSING="$MISSING CLOUDFLARE_PAGES_PROJECT(variable)"
+          if [ -n "$MISSING" ]; then
+            echo "::error::缺少配置:$MISSING — 见本 workflow 顶部注释配置后重跑。"
+            exit 1
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # download/ 是纯静态目录;--branch=main 部署为 Pages 生产环境
+          command: pages deploy download --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main
