@@ -14,6 +14,21 @@ export const NEXTHUBX_API_BASE = 'https://gate.hub4cc.com'
 
 const REQUEST_TIMEOUT_MS = 15_000
 
+/**
+ * 持久安装设备 ID:首次生成 UUID 存 localStorage,后续读取。
+ * 后端据此强制设备绑定(一席一设备):激活时绑定到首个设备,sync 校验不符即 401。
+ * 清缓存 / 重装会丢失 → 届时 sync 401,需重新激活(由管理员「重置设备」下发新激活码)。
+ */
+const DEVICE_ID_KEY = 'nexthubx-device-id'
+function getDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(DEVICE_ID_KEY, id)
+  }
+  return id
+}
+
 export interface ProxyConfig {
   format: 'clash-yaml'
   content: string
@@ -78,7 +93,7 @@ export async function activate(token: string): Promise<ActivateResult> {
       'Content-Type': 'application/json',
       'User-Agent': userAgent,
     },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, deviceId: getDeviceId() }),
   })
 
   if (response.status === 409) {
@@ -112,6 +127,7 @@ export async function syncClient(
   const headers: Record<string, string> = {
     Authorization: `Bearer ${clientToken}`,
     'User-Agent': userAgent,
+    'X-Device-Id': getDeviceId(),
   }
   if (configFingerprint) {
     headers['If-None-Match'] = configFingerprint
