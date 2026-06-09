@@ -67,20 +67,24 @@
     <p class="lead">下一代 LLM 触达解决方案 · 安装后使用企业激活码激活即可接入。</p>
 
     <div class="dl">
-      <a class="primary" id="primary" href="https://updates.nexthubx.com/download/latest/NextHubX-win.exe">检测系统中…</a>
+      <a class="primary" id="primary" href="https://updates.nexthubx.com/download/latest/NextHubX-win-x64.exe">检测系统中…</a>
       <span class="alt">
-        其他平台:
-        <a id="dlMac" href="https://updates.nexthubx.com/download/latest/NextHubX-mac.dmg">macOS · Apple Silicon (.dmg)</a>
+        全部平台:
+        <a id="dlMacArm" href="https://updates.nexthubx.com/download/latest/NextHubX-mac-arm64.dmg">macOS · Apple Silicon (.dmg)</a>
         &nbsp;·&nbsp;
-        <a id="dlWin" href="https://updates.nexthubx.com/download/latest/NextHubX-win.exe">Windows · 64 位 (.exe)</a>
+        <a id="dlMacX64" href="https://updates.nexthubx.com/download/latest/NextHubX-mac-x64.dmg">macOS · Intel (.dmg)</a>
+        &nbsp;·&nbsp;
+        <a id="dlWinX64" href="https://updates.nexthubx.com/download/latest/NextHubX-win-x64.exe">Windows · x64 (.exe)</a>
+        &nbsp;·&nbsp;
+        <a id="dlWinArm" href="https://updates.nexthubx.com/download/latest/NextHubX-win-arm64.exe">Windows · ARM64 (.exe)</a>
       </span>
     </div>
 
     <section>
       <h2>系统要求</h2>
       <table>
-        <tr><th>macOS</th><td>11 (Big Sur) 及以上,Apple Silicon(M 系列芯片)。暂不提供 Intel 版。</td></tr>
-        <tr><th>Windows</th><td>Windows 10 / 11,64 位(x64)。</td></tr>
+        <tr><th>macOS</th><td>11 (Big Sur) 及以上,Apple Silicon(M 系列)与 Intel 芯片均支持。</td></tr>
+        <tr><th>Windows</th><td>Windows 10 / 11,x64 与 ARM64 均支持。</td></tr>
       </table>
     </section>
 
@@ -110,34 +114,36 @@
   <script>
     (function () {
       var UP = "https://updates.nexthubx.com/";
-      var BASE = UP + "download/";
-      // fallback:固定直链(latest 覆盖);拿到 latest.json 后切到版本化归档地址(地址含版本号、
-      // immutable,既不受边缘缓存陈旧影响,也永不下到旧包)。
-      var mac = BASE + "latest/NextHubX-mac.dmg";
-      var win = BASE + "latest/NextHubX-win.exe";
+      var L = UP + "download/latest/";
+      // 4 个架构固定直链(每版覆盖、no-cache,始终最新)。架构无法可靠探测时,
+      // 主按钮给最可能的默认(mac→Apple Silicon / win→x64),其余在「全部平台」全部列出供手选。
+      var u = {
+        macArm: L + "NextHubX-mac-arm64.dmg",
+        macX64: L + "NextHubX-mac-x64.dmg",
+        winX64: L + "NextHubX-win-x64.exe",
+        winArm: L + "NextHubX-win-arm64.exe",
+      };
       var ua = navigator.userAgent || "";
       var isMac = /Mac/i.test(ua) && !/iPhone|iPad/i.test(ua);
       var p = document.getElementById("primary");
-      var aMac = document.getElementById("dlMac");
-      var aWin = document.getElementById("dlWin");
-      function apply() {
-        if (aMac) aMac.href = mac;
-        if (aWin) aWin.href = win;
-        if (isMac) { p.href = mac; p.textContent = "下载 macOS 版 (.dmg)"; }
-        else { p.href = win; p.textContent = "下载 Windows 版 (.exe)"; }
+      function decide(arch) {
+        if (isMac) {
+          if (arch === "x86") { p.href = u.macX64; p.textContent = "下载 macOS Intel 版 (.dmg)"; }
+          else { p.href = u.macArm; p.textContent = "下载 macOS Apple Silicon 版 (.dmg)"; }
+        } else {
+          if (arch === "arm") { p.href = u.winArm; p.textContent = "下载 Windows ARM64 版 (.exe)"; }
+          else { p.href = u.winX64; p.textContent = "下载 Windows x64 版 (.exe)"; }
+        }
       }
-      apply();
+      // Chromium 可拿到 architecture("arm"/"x86");Safari/Firefox 不支持 → 用默认。
+      var d = navigator.userAgentData;
+      if (d && d.getHighEntropyValues) {
+        d.getHighEntropyValues(["architecture"]).then(function (h) { decide(h && h.architecture); }).catch(function () { decide(); });
+      } else { decide(); }
+      // 版本号(任一 latest.json 即可)
       fetch(UP + "darwin-aarch64/latest.json", { cache: "no-store" })
         .then(function (r) { return r.json(); })
-        .then(function (j) {
-          if (j && j.version) {
-            var v = j.version;
-            document.getElementById("ver").textContent = "最新版本 v" + v;
-            mac = BASE + "v" + v + "/NextHubX_" + v + "_aarch64.dmg";
-            win = BASE + "v" + v + "/NextHubX_" + v + "_x64-setup.exe";
-            apply();
-          }
-        })
+        .then(function (j) { if (j && j.version) document.getElementById("ver").textContent = "最新版本 v" + j.version; })
         .catch(function () {});
     })();
   </script>
