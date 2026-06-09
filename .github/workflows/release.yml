@@ -1,7 +1,7 @@
 name: NextHubX Release
 
 # Push a tag `vX.Y.Z` (must match package.json version, from main) to trigger.
-# Builds macOS (aarch64) + Windows (x64) → dmg/nsis + updater .sig →
+# Builds macOS (aarch64 + x86_64/Intel) + Windows (x64 + arm64) → dmg/nsis + updater .sig →
 # per-target latest.json → upload to Cloudflare R2 → publish GitHub Release.
 #
 # No OS code signing (same as Clash Verge): macOS is adhoc-signed, Windows is
@@ -67,9 +67,15 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             label: macOS-aarch64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            label: macOS-x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: Windows-x64
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            label: Windows-ARM64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -96,6 +102,18 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           run_install: false
+
+      # macOS runner 现为 Apple Silicon;构建 x86_64-apple-darwin = 交叉编译,
+      # 需 x86_64 版 OpenSSL(沿用 CVR autobuild 配方)。aarch64 原生构建不需要。
+      - name: Install x86_64 OpenSSL (macOS Intel cross-build only)
+        if: matrix.target == 'x86_64-apple-darwin'
+        run: |
+          arch -x86_64 /usr/local/bin/brew install openssl@3 2>/dev/null || arch -x86_64 brew install openssl@3
+          PREFIX=$(arch -x86_64 brew --prefix openssl@3)
+          echo "OPENSSL_DIR=$PREFIX" >> "$GITHUB_ENV"
+          echo "OPENSSL_INCLUDE_DIR=$PREFIX/include" >> "$GITHUB_ENV"
+          echo "OPENSSL_LIB_DIR=$PREFIX/lib" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig" >> "$GITHUB_ENV"
 
       - name: Install deps + prebuild sidecars
         run: |
@@ -219,6 +237,38 @@ jobs:
             echo "::warning::no windows x64 setup.exe found"
           fi
 
+          # ---- darwin-x86_64 (Intel Mac) ----
+          MACX_BUNDLE=$(awk -F'\t' '$1 ~ /(x64|x86_64)\.app\.tar\.gz$/{print $1; exit}' assets.tsv)
+          if [ -n "$MACX_BUNDLE" ]; then
+            MACX_URL=$(url_of "$MACX_BUNDLE")
+            MACX_SIG=$(fetch_sig "${MACX_BUNDLE}.sig")
+            mkdir -p out/darwin-x86_64
+            jq -n --arg v "$VERSION" --arg n "$NOTES" --arg d "$PUB_DATE" \
+                  --arg url "$MACX_URL" --arg sig "$MACX_SIG" \
+              '{version:$v, notes:$n, pub_date:$d,
+                platforms:{ "darwin-x86_64": { signature:$sig, url:$url } }}' \
+              > out/darwin-x86_64/latest.json
+            echo "wrote out/darwin-x86_64/latest.json"
+          else
+            echo "::warning::no darwin x86_64 .app.tar.gz found"
+          fi
+
+          # ---- windows-aarch64 (ARM64) ----
+          WINARM_BUNDLE=$(awk -F'\t' '$1 ~ /arm64-setup\.exe$/{print $1; exit}' assets.tsv)
+          if [ -n "$WINARM_BUNDLE" ]; then
+            WINARM_URL=$(url_of "$WINARM_BUNDLE")
+            WINARM_SIG=$(fetch_sig "${WINARM_BUNDLE}.sig")
+            mkdir -p out/windows-aarch64
+            jq -n --arg v "$VERSION" --arg n "$NOTES" --arg d "$PUB_DATE" \
+                  --arg url "$WINARM_URL" --arg sig "$WINARM_SIG" \
+              '{version:$v, notes:$n, pub_date:$d,
+                platforms:{ "windows-aarch64": { signature:$sig, url:$url } }}' \
+              > out/windows-aarch64/latest.json
+            echo "wrote out/windows-aarch64/latest.json"
+          else
+            echo "::warning::no windows arm64 setup.exe found"
+          fi
+
           find out -type f -print
 
       - name: Upload latest.json artifact (always)
@@ -261,22 +311,31 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
           mkdir -p inst
-          gh release download "$TAG" --dir inst --pattern '*.dmg' --pattern '*x64-setup.exe' || true
-          MAC=$(ls inst/*.dmg 2>/dev/null | head -1)
-          WIN=$(ls inst/*x64-setup.exe 2>/dev/null | head -1)
+          gh release download "$TAG" --dir inst --pattern '*.dmg' --pattern '*-setup.exe' || true
           put() { # $1 local  $2 r2-key  $3 content-type  $4 cache-control
             aws s3 cp "$1" "s3://${R2_BUCKET}/$2" --endpoint-url "$R2_ENDPOINT" \
               --content-type "$3" --cache-control "$4"
           }
-          if [ -n "$MAC" ]; then
-            put "$MAC" "download/${TAG}/$(basename "$MAC")" application/x-apple-diskimage 'public, max-age=31536000, immutable'
-            put "$MAC" "download/latest/NextHubX-mac.dmg" application/x-apple-diskimage 'no-cache'
-          else echo "::warning::no .dmg asset for $TAG"; fi
-          if [ -n "$WIN" ]; then
-            put "$WIN" "download/${TAG}/$(basename "$WIN")" application/vnd.microsoft.portable-executable 'public, max-age=31536000, immutable'
-            put "$WIN" "download/latest/NextHubX-win.exe" application/vnd.microsoft.portable-executable 'no-cache'
-          else echo "::warning::no x64-setup.exe asset for $TAG"; fi
-          echo "Installers synced to R2: download/${TAG}/ + download/latest/"
+          DMG='application/x-apple-diskimage'; EXE='application/vnd.microsoft.portable-executable'
+          IMM='public, max-age=31536000, immutable'
+          # 按架构子串归类(产物名沿 CVR 约定:_aarch64.dmg / _x64.dmg / _x64-setup.exe / _arm64-setup.exe)
+          MAC_ARM=$(ls inst/*aarch64*.dmg 2>/dev/null | head -1)
+          MAC_X64=$(ls inst/*_x64.dmg 2>/dev/null | head -1)
+          WIN_X64=$(ls inst/*x64-setup.exe 2>/dev/null | head -1)
+          WIN_ARM=$(ls inst/*arm64-setup.exe 2>/dev/null | head -1)
+          arch_put() { # $1 local  $2 latest 固定名  $3 ctype
+            [ -z "$1" ] && { echo "::warning::missing installer for $2"; return; }
+            put "$1" "download/${TAG}/$(basename "$1")" "$3" "$IMM"   # 版本化归档
+            put "$1" "download/latest/$2" "$3" 'no-cache'             # 架构固定直链
+          }
+          arch_put "$MAC_ARM" "NextHubX-mac-arm64.dmg" "$DMG"
+          arch_put "$MAC_X64" "NextHubX-mac-x64.dmg"   "$DMG"
+          arch_put "$WIN_X64" "NextHubX-win-x64.exe"   "$EXE"
+          arch_put "$WIN_ARM" "NextHubX-win-arm64.exe" "$EXE"
+          # 向后兼容旧固定名(指向主流架构:mac→arm64, win→x64)
+          [ -n "$MAC_ARM" ] && put "$MAC_ARM" "download/latest/NextHubX-mac.dmg" "$DMG" 'no-cache'
+          [ -n "$WIN_X64" ] && put "$WIN_X64" "download/latest/NextHubX-win.exe" "$EXE" 'no-cache'
+          echo "Installers synced to R2: download/${TAG}/ + download/latest/ (4 arch)"
 
       - name: Skipped R2 upload (secrets not set)
         if: ${{ env.R2_CONFIGURED != 'true' }}
