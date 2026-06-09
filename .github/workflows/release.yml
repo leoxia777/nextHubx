@@ -281,7 +281,8 @@ jobs:
       # R2 is an S3-compatible bucket. Endpoint/keys are placeholders — step is
       # skipped (no error) until the four R2_* secrets are configured.
       - name: Upload latest.json to Cloudflare R2
-        if: ${{ env.R2_CONFIGURED == 'true' }}
+        # 仅正式版推 R2(生产分发 + updater 通道);预发(-rc)只构建+建 GitHub 预发布,不碰线上
+        if: ${{ env.R2_CONFIGURED == 'true' && steps.meta.outputs.prerelease == 'false' }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -301,7 +302,8 @@ jobs:
       #   download/latest/NextHubX-*  —— 固定直链,每版覆盖 → no-cache,下载页/分发用
       # 注:自动升级仍走 latest.json 的版本化 url(签名匹配),与此处直链互不影响。
       - name: Upload installers to R2 (download/ + latest/)
-        if: ${{ env.R2_CONFIGURED == 'true' }}
+        # 仅正式版推 R2(生产分发 + updater 通道);预发(-rc)只构建+建 GitHub 预发布,不碰线上
+        if: ${{ env.R2_CONFIGURED == 'true' && steps.meta.outputs.prerelease == 'false' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
