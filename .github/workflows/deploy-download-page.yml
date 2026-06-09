@@ -46,6 +46,17 @@ jobs:
             exit 1
           fi
 
+      # wrangler-action 会用仓库的包管理器(pnpm)装 wrangler,故需先备好 pnpm + Node
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
