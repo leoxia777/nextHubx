@@ -7,8 +7,10 @@
  * 参考 `src/services/api.ts`(CVR 下载/IP 检测同样用此 plugin fetch)。
  */
 import { getName, getVersion } from '@tauri-apps/api/app'
-import { fetch } from '@tauri-apps/plugin-http'
 import { BaseDirectory, exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+
+import { keychainGet, keychainSet } from './keychain'
 
 /** 后端 API base(已上线)。 */
 export const NEXTHUBX_API_BASE = 'https://gate.hub4cc.com'
@@ -17,13 +19,14 @@ const REQUEST_TIMEOUT_MS = 15_000
 
 /**
  * 持久安装设备 ID。
- * 权威源 = $APPDATA 文件 nexthubx-device-id(与 clientToken 的 nexthubx-client.json 同目录,
- * 持久化行为一致:普通卸载/重装多保留,干净卸载/清数据一起丢);localStorage 为同步缓存。
- * 解析顺序:文件 → localStorage(迁移旧装)→ 新生成;解析后双写文件 + localStorage。
+ * 权威源 = OS keychain(key=device-id):加密 + **跨「干净卸载」存活**(不随 app 数据目录被清)。
+ * $APPDATA 文件 + localStorage 作缓存/回退(keychain 不可用时降级,deviceId 非机密可明文落盘)。
+ * 解析顺序:keychain → $APPDATA 文件 → localStorage(迁移旧装)→ 新生成;解析后三处回写。
  * 后端据此强制设备绑定(一席一设备):激活绑定首个设备,sync 校验不符即 401。
- * 干净卸载(连 clientToken 一起丢)后需重新激活(管理员「重置设备」发新码)。
+ * keychain 存活意味着:即便干净卸载重装,deviceId/clientToken 仍在,无需重新激活(详见 nexthubx-store)。
  */
 const DEVICE_ID_KEY = 'nexthubx-device-id'
+const DEVICE_ID_KC_KEY = 'device-id'
 const DEVICE_ID_FILE = 'nexthubx-device-id'
 const DEVICE_ID_FILE_OPTS = { baseDir: BaseDirectory.AppData } as const
 
@@ -51,10 +54,21 @@ async function writeDeviceIdFile(id: string): Promise<void> {
 /** 解析并持久化设备 ID(幂等,带内存缓存)。activate / sync 前及展示时 await。 */
 export async function ensureDeviceId(): Promise<string> {
   if (cachedDeviceId) return cachedDeviceId
-  let id = await readDeviceIdFile()
+  let id = ''
+  try {
+    id = (await keychainGet(DEVICE_ID_KC_KEY))?.trim() ?? '' // keychain 优先(跨干净卸载)
+  } catch {
+    /* keychain 不可用 → 降级到 $APPDATA/localStorage */
+  }
+  if (!id) id = await readDeviceIdFile() // 迁移:$APPDATA 旧安装
   if (!id) id = localStorage.getItem(DEVICE_ID_KEY) ?? '' // 迁移:仅有 localStorage 的旧安装
   if (!id) id = crypto.randomUUID()
-  await writeDeviceIdFile(id) // 落主目录(跨重装)
+  try {
+    await keychainSet(DEVICE_ID_KC_KEY, id) // 权威源,跨卸载
+  } catch {
+    /* keychain 写失败 → 仅靠下面的文件/缓存,不影响本次功能 */
+  }
+  await writeDeviceIdFile(id) // 缓存/回退(跨普通重装)
   localStorage.setItem(DEVICE_ID_KEY, id) // 同步缓存
   cachedDeviceId = id
   return id

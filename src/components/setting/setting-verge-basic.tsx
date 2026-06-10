@@ -1,15 +1,15 @@
 import { MenuItem, Select, Typography } from '@mui/material'
+import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 
 import { DialogRef, Switch } from '@/components/base'
 import { updateLastCheckTime } from '@/hooks/use-update'
 import { useVerge } from '@/hooks/use-verge'
 import { exportDiagnosticInfo, openLogsDir } from '@/services/cmds'
 import { supportedLanguages } from '@/services/i18n'
-import { showNotice } from '@/services/notice-service'
 import { ensureDeviceId } from '@/services/nexthubx-api'
+import { showNotice } from '@/services/notice-service'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
 import { version } from '@root/package.json'
 
