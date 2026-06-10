@@ -1,0 +1,49 @@
+name: Test Unsigned Build (keychain)
+# 临时:出未签名 Windows x64 安装包(供 keychain 真机测试)。
+# 去掉 dev.yml 的签名 env + 用 src-tauri/no-updater.conf.json 关 createUpdaterArtifacts,
+# 绕开损坏的签名 secret;产物经 upload-artifact 下载。测完连同分支一起删。
+on:
+  push:
+    branches:
+      - test-build-win-keychain
+  workflow_dispatch:
+
+jobs:
+  win-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: test-win-x64-keychain
+          workspaces: '. -> target'
+          cache-all-crates: true
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - name: Install deps + prebuild
+        run: |
+          pnpm i
+          pnpm run prebuild x86_64-pc-windows-msvc
+      - name: Add Rust target
+        run: rustup target add x86_64-pc-windows-msvc --toolchain 1.95.0 || rustup target add x86_64-pc-windows-msvc
+      - name: Tauri build (unsigned, no updater)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: '--max_old_space_size=4096'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm
+          args: --target x86_64-pc-windows-msvc -b nsis --config src-tauri/no-updater.conf.json
+      - name: Upload nsis
+        uses: actions/upload-artifact@v7
+        with:
+          name: nexthubx-windows-x64-unsigned-nsis
+          archive: false
+          path: target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: error
