@@ -1,6 +1,7 @@
 import { MenuItem, Select, Typography } from '@mui/material'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 
 import { DialogRef, Switch } from '@/components/base'
 import { updateLastCheckTime } from '@/hooks/use-update'
@@ -8,6 +9,7 @@ import { useVerge } from '@/hooks/use-verge'
 import { exportDiagnosticInfo, openLogsDir } from '@/services/cmds'
 import { supportedLanguages } from '@/services/i18n'
 import { showNotice } from '@/services/notice-service'
+import { getDeviceId } from '@/services/nexthubx-api'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
 import { version } from '@root/package.json'
 
@@ -81,6 +83,12 @@ const SettingVergeBasic = ({ onError }: Props) => {
     await exportDiagnosticInfo()
     showNotice.success('shared.feedback.notifications.common.copySuccess', 1000)
   }, [])
+
+  const deviceId = getDeviceId()
+  const onCopyDeviceId = useCallback(async () => {
+    await writeText(deviceId)
+    showNotice.success('shared.feedback.notifications.common.copySuccess', 1000)
+  }, [deviceId])
 
   return (
     <SettingList title={t('settings.components.verge.basic.title')}>
@@ -156,6 +164,16 @@ const SettingVergeBasic = ({ onError }: Props) => {
         onClick={onExportDiagnosticInfo}
         label={t('settings.components.verge.basic.fields.exportDiagnostics')}
       />
+
+      <SettingItem label="设备 ID">
+        <Typography
+          onClick={onCopyDeviceId}
+          title="点击复制"
+          sx={{ py: '7px', pr: 1, fontFamily: 'monospace', fontSize: 12, cursor: 'pointer' }}
+        >
+          {deviceId}
+        </Typography>
+      </SettingItem>
 
       <SettingItem label={t('settings.components.verge.basic.fields.version')}>
         <Typography sx={{ py: '7px', pr: 1 }}>v{version}</Typography>
