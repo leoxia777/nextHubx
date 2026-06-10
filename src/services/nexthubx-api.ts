@@ -8,6 +8,7 @@
  */
 import { getName, getVersion } from '@tauri-apps/api/app'
 import { fetch } from '@tauri-apps/plugin-http'
+import { BaseDirectory, exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
 /** 后端 API base(已上线)。 */
 export const NEXTHUBX_API_BASE = 'https://gate.hub4cc.com'
@@ -15,17 +16,46 @@ export const NEXTHUBX_API_BASE = 'https://gate.hub4cc.com'
 const REQUEST_TIMEOUT_MS = 15_000
 
 /**
- * 持久安装设备 ID:首次生成 UUID 存 localStorage,后续读取。
- * 后端据此强制设备绑定(一席一设备):激活时绑定到首个设备,sync 校验不符即 401。
- * 清缓存 / 重装会丢失 → 届时 sync 401,需重新激活(由管理员「重置设备」下发新激活码)。
+ * 持久安装设备 ID(跨重装存活)。
+ * 权威源 = 主目录隐藏文件 ~/.nexthubx-device-id(卸载/重装仍在);localStorage 为同步缓存。
+ * 解析顺序:文件 → localStorage(迁移旧装)→ 新生成;解析后双写文件 + localStorage。
+ * 后端据此强制设备绑定(一席一设备):激活绑定首个设备,sync 校验不符即 401。
+ * 仅当用户手动删该文件且清缓存才会丢 → sync 401,需重新激活(管理员「重置设备」发新码)。
  */
 const DEVICE_ID_KEY = 'nexthubx-device-id'
-export function getDeviceId(): string {
-  let id = localStorage.getItem(DEVICE_ID_KEY)
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(DEVICE_ID_KEY, id)
+const DEVICE_ID_FILE = '.nexthubx-device-id'
+const DEVICE_ID_FILE_OPTS = { baseDir: BaseDirectory.Home } as const
+
+let cachedDeviceId: string | null = null
+
+async function readDeviceIdFile(): Promise<string> {
+  try {
+    if (await exists(DEVICE_ID_FILE, DEVICE_ID_FILE_OPTS)) {
+      return (await readTextFile(DEVICE_ID_FILE, DEVICE_ID_FILE_OPTS)).trim()
+    }
+  } catch {
+    /* fs 不可用/无权限 → 退回 localStorage */
   }
+  return ''
+}
+
+async function writeDeviceIdFile(id: string): Promise<void> {
+  try {
+    await writeTextFile(DEVICE_ID_FILE, id, DEVICE_ID_FILE_OPTS)
+  } catch {
+    /* 写不了主目录 → localStorage 兜底,不影响功能 */
+  }
+}
+
+/** 解析并持久化设备 ID(幂等,带内存缓存)。activate / sync 前及展示时 await。 */
+export async function ensureDeviceId(): Promise<string> {
+  if (cachedDeviceId) return cachedDeviceId
+  let id = await readDeviceIdFile()
+  if (!id) id = localStorage.getItem(DEVICE_ID_KEY) ?? '' // 迁移:仅有 localStorage 的旧安装
+  if (!id) id = crypto.randomUUID()
+  await writeDeviceIdFile(id) // 落主目录(跨重装)
+  localStorage.setItem(DEVICE_ID_KEY, id) // 同步缓存
+  cachedDeviceId = id
   return id
 }
 
@@ -93,7 +123,7 @@ export async function activate(token: string): Promise<ActivateResult> {
       'Content-Type': 'application/json',
       'User-Agent': userAgent,
     },
-    body: JSON.stringify({ token, deviceId: getDeviceId() }),
+    body: JSON.stringify({ token, deviceId: await ensureDeviceId() }),
   })
 
   if (response.status === 409) {
@@ -127,7 +157,7 @@ export async function syncClient(
   const headers: Record<string, string> = {
     Authorization: `Bearer ${clientToken}`,
     'User-Agent': userAgent,
-    'X-Device-Id': getDeviceId(),
+    'X-Device-Id': await ensureDeviceId(),
   }
   if (configFingerprint) {
     headers['If-None-Match'] = configFingerprint
