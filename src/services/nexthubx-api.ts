@@ -20,7 +20,7 @@ const REQUEST_TIMEOUT_MS = 15_000
  * 清缓存 / 重装会丢失 → 届时 sync 401,需重新激活(由管理员「重置设备」下发新激活码)。
  */
 const DEVICE_ID_KEY = 'nexthubx-device-id'
-function getDeviceId(): string {
+export function getDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY)
   if (!id) {
     id = crypto.randomUUID()
