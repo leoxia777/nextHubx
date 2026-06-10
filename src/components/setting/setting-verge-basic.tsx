@@ -1,5 +1,5 @@
 import { MenuItem, Select, Typography } from '@mui/material'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 
@@ -9,7 +9,7 @@ import { useVerge } from '@/hooks/use-verge'
 import { exportDiagnosticInfo, openLogsDir } from '@/services/cmds'
 import { supportedLanguages } from '@/services/i18n'
 import { showNotice } from '@/services/notice-service'
-import { getDeviceId } from '@/services/nexthubx-api'
+import { ensureDeviceId } from '@/services/nexthubx-api'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
 import { version } from '@root/package.json'
 
@@ -84,8 +84,14 @@ const SettingVergeBasic = ({ onError }: Props) => {
     showNotice.success('shared.feedback.notifications.common.copySuccess', 1000)
   }, [])
 
-  const deviceId = getDeviceId()
+  const [deviceId, setDeviceId] = useState('')
+  useEffect(() => {
+    ensureDeviceId()
+      .then(setDeviceId)
+      .catch(() => {})
+  }, [])
   const onCopyDeviceId = useCallback(async () => {
+    if (!deviceId) return
     await writeText(deviceId)
     showNotice.success('shared.feedback.notifications.common.copySuccess', 1000)
   }, [deviceId])
