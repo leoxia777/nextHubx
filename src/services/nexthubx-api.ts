@@ -16,15 +16,16 @@ export const NEXTHUBX_API_BASE = 'https://gate.hub4cc.com'
 const REQUEST_TIMEOUT_MS = 15_000
 
 /**
- * 持久安装设备 ID(跨重装存活)。
- * 权威源 = 主目录隐藏文件 ~/.nexthubx-device-id(卸载/重装仍在);localStorage 为同步缓存。
+ * 持久安装设备 ID。
+ * 权威源 = $APPDATA 文件 nexthubx-device-id(与 clientToken 的 nexthubx-client.json 同目录,
+ * 持久化行为一致:普通卸载/重装多保留,干净卸载/清数据一起丢);localStorage 为同步缓存。
  * 解析顺序:文件 → localStorage(迁移旧装)→ 新生成;解析后双写文件 + localStorage。
  * 后端据此强制设备绑定(一席一设备):激活绑定首个设备,sync 校验不符即 401。
- * 仅当用户手动删该文件且清缓存才会丢 → sync 401,需重新激活(管理员「重置设备」发新码)。
+ * 干净卸载(连 clientToken 一起丢)后需重新激活(管理员「重置设备」发新码)。
  */
 const DEVICE_ID_KEY = 'nexthubx-device-id'
-const DEVICE_ID_FILE = '.nexthubx-device-id'
-const DEVICE_ID_FILE_OPTS = { baseDir: BaseDirectory.Home } as const
+const DEVICE_ID_FILE = 'nexthubx-device-id'
+const DEVICE_ID_FILE_OPTS = { baseDir: BaseDirectory.AppData } as const
 
 let cachedDeviceId: string | null = null
 
