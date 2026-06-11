@@ -2,16 +2,20 @@
  * nextHubx 后端 API 客户端(M2)。
  *
  * ⚠️ 必须走 Tauri 的 HTTP 插件(`@tauri-apps/plugin-http` 的 `fetch`)——
- * 该 fetch 在 Rust 侧发起请求,不带 webview 的 Origin 头,因此不会撞后端 CORS
- * (后端只放行 admin.hub4cc.com)。**不要改用 webview 原生 fetch**。
- * 参考 `src/services/api.ts`(CVR 下载/IP 检测同样用此 plugin fetch)。
+ * 该 fetch 在 Rust 侧发起请求,不带 webview 的 Origin 头,因此不受后端 CORS 限制。
+ * **不要改用 webview 原生 fetch**。参考 `src/services/api.ts`(CVR 下载/IP 检测同样用此 plugin fetch)。
  */
 import { getName, getVersion } from '@tauri-apps/api/app'
 import { fetch } from '@tauri-apps/plugin-http'
 import { BaseDirectory, exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
-/** 后端 API base(已上线)。 */
-export const NEXTHUBX_API_BASE = 'https://gate.hub4cc.com'
+/**
+ * 后端控制面 API base —— 业务层域名(nexthubx.com)。
+ * 激活 /api/activate、同步 /api/client/sync 属「业务/控制面」走这里;
+ * 订阅 /sub 与 VLESS 数据面属「订阅层」(hub4cc.com),在下发的 clash 配置里(server_domain),与此分离。
+ * 旧客户端用的 gate.hub4cc.com 仍由网关同时服务 /api,故升级不影响存量。
+ */
+export const NEXTHUBX_API_BASE = 'https://gate.nexthubx.com'
 
 const REQUEST_TIMEOUT_MS = 15_000
 
