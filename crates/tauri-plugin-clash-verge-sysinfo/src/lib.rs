@@ -169,6 +169,11 @@ const OFFICIAL_CLASH_VERGE_MARKERS: &[&str] = &[
 /// 本应用 (NextHubX) 自身的标识，命中其中任意一项就排除，避免把自己误判成官方版。
 const SELF_MARKERS: &[&str] = &["com.nexthubx.app", "nexthubx"];
 
+/// 特权服务守护进程标识。`clash-verge-service` 是 NextHubX 与 Clash Verge **共用**的后台服务
+/// (LaunchDaemon，常驻)，它在运行**不代表官方 Clash Verge 的 GUI 在运行**——CV 退出后该守护
+/// 进程仍常驻。冲突告警 / 激活门控只关心 GUI 抢占网络，故命中服务标识即排除，避免误判。
+const SERVICE_MARKERS: &[&str] = &["clash-verge-service"];
+
 /// 检测系统中是否有「官方 Clash Verge」(clash-verge-rev) 进程在运行。
 ///
 /// 判定逻辑：枚举所有进程，对每个进程的可执行文件路径 + 进程名（统一转小写）做匹配：
@@ -197,6 +202,11 @@ pub fn detect_official_clash_verge() -> bool {
 
         // 先排除自身，避免误判 NextHubX。
         if SELF_MARKERS.iter().any(|marker| haystack.contains(marker)) {
+            return false;
+        }
+        // 再排除共用的特权服务守护进程（clash-verge-service）：它常驻、与 GUI 无关，
+        // CV 的 GUI 退出后该守护进程仍在跑，若不排除会持续误判「CV 正在运行」(本次踩坑)。
+        if SERVICE_MARKERS.iter().any(|marker| haystack.contains(marker)) {
             return false;
         }
         OFFICIAL_CLASH_VERGE_MARKERS
