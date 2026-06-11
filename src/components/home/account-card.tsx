@@ -32,8 +32,13 @@ import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
 import { useServiceInstaller } from '@/hooks/use-service-installer'
 import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
-import { isServiceAvailable } from '@/services/cmds'
+import {
+  detectOfficialClashVerge,
+  detectOfficialClashVergeAutostart,
+  isServiceAvailable,
+} from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
+import { errInfo, nxDebug } from '@/services/nexthubx-debug'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
 import { loadClientState, saveClientState } from '@/services/nexthubx-store'
 import { showNotice } from '@/services/notice-service'
@@ -76,6 +81,11 @@ export const AccountCard = () => {
   const [verifyPhase, setVerifyPhase] = useState<VerifyPhase | null>(null)
   const [serviceFailures, setServiceFailures] = useState(0)
   const [installing, setInstalling] = useState(false)
+  // 激活前门控:检测到官方 Clash Verge 正在运行 / 开机自启未关时,记录原因并阻断激活。
+  const [cvBlock, setCvBlock] = useState<{
+    running: boolean
+    autostart: boolean
+  } | null>(null)
 
   // 验证中持续轮询实际出口 IP,交给共享守卫做比对(防误报 5 条件)
   const verifying = verifyPhase !== null
@@ -92,7 +102,10 @@ export const AccountCard = () => {
     !reactivating &&
     !verifying &&
     Boolean(clientState) &&
-    exitStatus !== 'mismatch'
+    exitStatus !== 'mismatch' &&
+    // 验证流程未走完(setupComplete===false)时不展示账号,交由下方 resume effect 续跑验证。
+    // undefined(老状态)视为已完成,不打扰存量用户。
+    clientState?.setupComplete !== false
 
   const showForm = !isActivated || !clientState || (reactivating && !verifying)
 
@@ -112,6 +125,24 @@ export const AccountCard = () => {
     },
     [verge, mutateVerge, patchVerge],
   )
+
+  // 激活前门控:检测官方 Clash Verge 是否「正在运行」或「开机自启未关」。
+  // 任一命中 → 记录到 cvBlock(渲染指引 + 阻断激活),清空则放行。返回是否通过。
+  // 说明:CV 的 TUN 开关无法直接读;但「CV 未运行」即保证其 TUN 不活跃(退出=关 TUN),
+  // 自启则查其 LaunchAgent。两者皆否 → CV 现在和重启后都不会抢占网络。
+  const checkClashVergeGate = useCallback(async (): Promise<boolean> => {
+    const [running, autostart] = await Promise.all([
+      detectOfficialClashVerge(),
+      detectOfficialClashVergeAutostart(),
+    ])
+    void nxDebug('gate.check', { cvRunning: running, cvAutostart: autostart })
+    if (running || autostart) {
+      setCvBlock({ running, autostart })
+      return false
+    }
+    setCvBlock(null)
+    return true
+  }, [])
 
   // 强制安装 service(验证流程中的 b 步)
   const onInstallService = useLockFn(async () => {
@@ -144,7 +175,10 @@ export const AccountCard = () => {
 
     // service 子阶段:就绪则进 connect
     if (verifyPhase === 'service') {
-      if (isServiceOk) setVerifyPhase('connect')
+      if (isServiceOk) {
+        void nxDebug('service.ready')
+        setVerifyPhase('connect')
+      }
       return
     }
 
@@ -155,8 +189,10 @@ export const AccountCard = () => {
       void (async () => {
         try {
           await enableTun(true)
+          void nxDebug('tun.enabled')
         } catch (err) {
           console.error('[nexthubx] enable tun failed', err)
+          void nxDebug('tun.fail', errInfo(err))
         }
         setVerifyPhase('probe')
       })()
@@ -167,7 +203,17 @@ export const AccountCard = () => {
   // probe 子阶段:持续轮询 IP,直到守卫给出 match → 完成激活;mismatch 交全局警示
   useEffect(() => {
     if (verifyPhase !== 'probe') return
+    // 仅记 exitStatus(它已是依赖);实际 IP 见 api.ts 的 ipcheck.ok、期望出口见 activate.ok。
+    void nxDebug('probe', { exitStatus })
     if (exitStatus === 'match') {
+      // 验证全流程完成 → 持久化 setupComplete,使重开 app 直接展示账号、不再重跑验证。
+      void (async () => {
+        const cur = await loadClientState()
+        if (cur && cur.setupComplete !== true) {
+          await saveClientState({ ...cur, setupComplete: true })
+          refresh()
+        }
+      })()
       setVerifyPhase(null)
       setReactivating(false)
       return
@@ -178,7 +224,41 @@ export const AccountCard = () => {
     // 立即先取一次
     void refetchIp()
     return () => clearInterval(timer)
-  }, [verifyPhase, exitStatus, refetchIp])
+  }, [verifyPhase, exitStatus, refetchIp, refresh])
+
+  // 未激活守卫:从未激活 / token 被吊销(isActivated=false)且不处于激活验证流程(verifying)时,
+  // 强制关闭 TUN —— 避免在「无有效订阅配置」下 TUN 仍接管全局流量(走默认/失效出口)。
+  // 激活流程 connect 子阶段会主动开 TUN(verifying=true → 本守卫不触发);
+  // 已激活用户的手动 TUN 开关不受影响(isActivated=true → 不触发)。设为 false 后 verge 变化使本
+  // effect 复跑、条件不再满足 → 自然收敛,无循环。
+  useEffect(() => {
+    if (isActivated || verifying) return
+    if (verge?.enable_tun_mode) {
+      void enableTun(false).catch((err) =>
+        console.error('[nexthubx] force-disable tun (inactive) failed', err),
+      )
+    }
+  }, [isActivated, verifying, verge?.enable_tun_mode, enableTun])
+
+  // 续跑守卫(#2):激活码已校验、配置已导入,但验证流程未走完(setupComplete===false)时,
+  // 重开 app 自动从验证流程起点(service)续跑,而非回到激活码输入。
+  // service→TUN→出口 IP 三步均幂等,从头重跑安全;比持久化精确子步骤更稳(子步骤可能续进失效中间态)。
+  useEffect(() => {
+    if (
+      isActivated &&
+      clientState?.setupComplete === false &&
+      verifyPhase === null &&
+      !reactivating
+    ) {
+      setServiceFailures(0)
+      setVerifyPhase('service')
+    }
+  }, [isActivated, clientState?.setupComplete, verifyPhase, reactivating])
+
+  // 显示激活表单时主动检测一次 Clash Verge 冲突,提前把门控指引展示出来(无需等用户点激活)。
+  useEffect(() => {
+    if (showForm) void checkClashVergeGate()
+  }, [showForm, checkClashVergeGate])
 
   const onActivate = useLockFn(async () => {
     const trimmed = token.trim()
@@ -187,9 +267,21 @@ export const AccountCard = () => {
       return
     }
 
+    // 激活前强制门控:Clash Verge 运行中(TUN/代理活跃)或开机自启未关 → 阻断并展示指引,
+    // 待用户关闭后(点「重新检测」通过)才放行,避免激活请求被劫 + 后续 TUN 互相冲突。
+    if (!(await checkClashVergeGate())) {
+      return
+    }
+
     setSubmitting(true)
+    void nxDebug('activate.start')
     try {
       const result = await activate(trimmed)
+      void nxDebug('activate.ok', {
+        email: result.identityEmail,
+        expectedExitIp: result.expectedExitIp,
+        cfgLen: result.proxyConfig?.content?.length,
+      })
 
       // 复用已有托管 profile uid(若之前激活过)以更新而非堆积
       const prev = await loadClientState()
@@ -199,8 +291,10 @@ export const AccountCard = () => {
           result.proxyConfig.content,
           prev?.profileUid,
         )
+        void nxDebug('importProfile.ok', { profileUid })
       } catch (err) {
         console.error('[nexthubx] import profile failed', err)
+        void nxDebug('importProfile.fail', errInfo(err))
         showNotice.error('nexthubx.activate.feedback.configError')
         return
       }
@@ -214,6 +308,11 @@ export const AccountCard = () => {
         configFingerprint: prev?.configFingerprint,
         // 出口比对用:后端缺省时回退到上次值(老后端兼容)
         expectedExitIp: result.expectedExitIp ?? prev?.expectedExitIp,
+        // 账号使用说明:后端系统配置下发;缺省回退上次值(老后端兼容)
+        usageTips: result.tips ?? prev?.usageTips,
+        // 激活码已过、配置已导入,但验证流程(service→TUN→IP)尚未走完。
+        // 此时若 app 被关闭,重开时据此从验证流程续跑而非回到输码(见下方 resume effect)。
+        setupComplete: false,
       })
 
       showNotice.success('nexthubx.activate.feedback.success')
@@ -229,12 +328,15 @@ export const AccountCard = () => {
         console.error('[nexthubx] service readiness check failed', svcErr)
       }
       await mutateSystemState()
+      void nxDebug('verify.start', { serviceReady })
       setVerifyPhase(serviceReady ? 'connect' : 'service')
     } catch (err) {
       if (err instanceof ActivationInvalidError) {
+        void nxDebug('activate.fail.invalid', errInfo(err))
         showNotice.error('nexthubx.activate.feedback.invalid')
       } else {
         console.error('[nexthubx] activate failed', err)
+        void nxDebug('activate.fail.network', errInfo(err))
         showNotice.error('nexthubx.activate.feedback.networkError')
       }
     } finally {
@@ -305,31 +407,20 @@ export const AccountCard = () => {
       )
     }
 
-    // connect / probe:验证中(账号信息暂不显示)
+    // connect / probe:验证中(账号信息暂不显示)。
+    // 始终保持「校验中」加载态;TUN 刚切换时 IP 检测短暂返回旧出口属预期(一般十几秒内收敛),
+    // 故 mismatch 仅以 info 提示附注,不再用红色警示吓用户(全屏警示也已在验证期被抑制)。
     const mismatch = exitStatus === 'mismatch'
     return (
       <Stack spacing={2} sx={{ alignItems: 'center', py: 2 }}>
-        {mismatch ? (
-          <Alert
-            severity="error"
-            variant="outlined"
-            icon={<WarningAmberRounded />}
-            sx={{ width: '100%' }}
-          >
-            <Typography variant="subtitle2">
-              {t('nexthubx.exitGuard.title')}
-            </Typography>
-            <Typography variant="body2">
-              {t('nexthubx.activate.verify.mismatchHint')}
-            </Typography>
+        <CircularProgress size={28} />
+        <Typography variant="body2" color="text.secondary">
+          {t('nexthubx.activate.verify.verifying')}
+        </Typography>
+        {mismatch && (
+          <Alert severity="info" variant="outlined" sx={{ width: '100%' }}>
+            {t('nexthubx.activate.verify.mismatchHint')}
           </Alert>
-        ) : (
-          <>
-            <CircularProgress size={28} />
-            <Typography variant="body2" color="text.secondary">
-              {t('nexthubx.activate.verify.verifying')}
-            </Typography>
-          </>
         )}
       </Stack>
     )
@@ -364,6 +455,24 @@ export const AccountCard = () => {
           <Typography variant="body2" color="text.secondary">
             {t('nexthubx.activate.subtitle')}
           </Typography>
+          {cvBlock && (
+            <Alert
+              severity="warning"
+              icon={<WarningAmberRounded fontSize="inherit" />}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => void checkClashVergeGate()}
+                >
+                  {t('nexthubx.clashVergeConflict.recheck')}
+                </Button>
+              }
+              sx={{ whiteSpace: 'pre-line', alignItems: 'flex-start' }}
+            >
+              {`${t('nexthubx.clashVergeConflict.blockingActivate')}\n\n${t('nexthubx.clashVergeConflict.steps')}`}
+            </Alert>
+          )}
           <TextField
             fullWidth
             size="small"
@@ -382,7 +491,7 @@ export const AccountCard = () => {
             <Button
               variant="contained"
               onClick={() => void onActivate()}
-              disabled={submitting}
+              disabled={submitting || Boolean(cvBlock)}
             >
               {submitting
                 ? t('nexthubx.activate.submitting')
@@ -473,8 +582,14 @@ export const AccountCard = () => {
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('nexthubx.account.usage.title')}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t('nexthubx.account.usage.body')}
+            {/* 使用说明优先取后端「系统配置」下发的 tips(激活/sync 时存入 usageTips),
+                缺省(老后端/未配置)回退内置 i18n 文案。whiteSpace 保留运营配置的换行。 */}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ whiteSpace: 'pre-line' }}
+            >
+              {clientState?.usageTips?.trim() || t('nexthubx.account.usage.body')}
             </Typography>
           </Box>
         </Stack>

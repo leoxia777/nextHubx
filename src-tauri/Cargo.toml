@@ -98,9 +98,11 @@ tauri-plugin-devtools = { version = "2.1.0" }
 tauri-plugin-mihomo = { git = "https://github.com/clash-verge-rev/tauri-plugin-mihomo" }
 clash_verge_logger = { git = "https://github.com/clash-verge-rev/clash-verge-logger" }
 async-trait = "0.1.89"
-clash_verge_service_ipc = { version = "2.3.0", features = [
+# NextHubX fork:服务身份改名 com.nexthubx.app.service(socket /tmp/nexthubx、Windows pipe/服务名同步),
+# 与官方 Clash Verge 各装各的、永不互抢。tag 钉死 v2.3.1,确保 crate::VERSION 与 prebuild 下载的服务二进制版本一致。
+clash_verge_service_ipc = { version = "2.3.1", features = [
   "client",
-], git = "https://github.com/clash-verge-rev/clash-verge-service-ipc" }
+], git = "https://github.com/leoxia777/nexthubx-service-ipc", tag = "v2.3.1" }
 arc-swap = "1.9.1"
 tokio-rustls = "0.26.4"
 rustls = { version = "0.23.40", features = ["ring"] }

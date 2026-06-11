@@ -169,6 +169,11 @@ const OFFICIAL_CLASH_VERGE_MARKERS: &[&str] = &[
 /// 本应用 (NextHubX) 自身的标识，命中其中任意一项就排除，避免把自己误判成官方版。
 const SELF_MARKERS: &[&str] = &["com.nexthubx.app", "nexthubx"];
 
+/// 特权服务守护进程标识。`clash-verge-service` 是 NextHubX 与 Clash Verge **共用**的后台服务
+/// (LaunchDaemon，常驻)，它在运行**不代表官方 Clash Verge 的 GUI 在运行**——CV 退出后该守护
+/// 进程仍常驻。冲突告警 / 激活门控只关心 GUI 抢占网络，故命中服务标识即排除，避免误判。
+const SERVICE_MARKERS: &[&str] = &["clash-verge-service"];
+
 /// 检测系统中是否有「官方 Clash Verge」(clash-verge-rev) 进程在运行。
 ///
 /// 判定逻辑：枚举所有进程，对每个进程的可执行文件路径 + 进程名（统一转小写）做匹配：
@@ -199,10 +204,49 @@ pub fn detect_official_clash_verge() -> bool {
         if SELF_MARKERS.iter().any(|marker| haystack.contains(marker)) {
             return false;
         }
+        // 再排除共用的特权服务守护进程（clash-verge-service）：它常驻、与 GUI 无关，
+        // CV 的 GUI 退出后该守护进程仍在跑，若不排除会持续误判「CV 正在运行」(本次踩坑)。
+        if SERVICE_MARKERS.iter().any(|marker| haystack.contains(marker)) {
+            return false;
+        }
         OFFICIAL_CLASH_VERGE_MARKERS
             .iter()
             .any(|marker| haystack.contains(marker))
     })
+}
+
+/// 检测「官方 Clash Verge」是否配置了**有效**的开机自启(供激活前门控,确保它不会重启后又抢占网络)。
+///
+/// - macOS:检查其 LaunchAgent plist 是否存在,**并且** plist 指向的可执行文件仍存在。
+///   关键:把 Clash Verge.app 拖进垃圾箱**不会**删除这个 LaunchAgent plist,会留下一个指向「已删除
+///   app」的孤儿 plist。孤儿 plist 在登录时拉不起任何东西,不应再判为「自启开启」——否则用户删了
+///   CV 却仍被激活门控拦住(本次踩坑)。故读 plist 的 ProgramArguments 路径,校验其真实存在。
+/// - 其它平台:暂不检测(返回 false),激活门控在这些平台仅按进程运行态判断。
+#[cfg(target_os = "macos")]
+pub fn detect_official_clash_verge_autostart() -> bool {
+    let Some(home) = std::env::var_os("HOME") else {
+        return false;
+    };
+    let plist = std::path::Path::new(&home)
+        .join("Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist");
+    let Ok(content) = std::fs::read_to_string(&plist) else {
+        return false; // plist 不存在 → 未配置自启
+    };
+    // 取 plist 里 ProgramArguments 的可执行路径(<string>/.../Clash Verge.app/.../clash-verge</string>),
+    // 仅当该文件仍存在才算「自启有效」(排除指向已删 app 的孤儿 plist)。
+    content
+        .lines()
+        .filter_map(|line| {
+            let t = line.trim();
+            t.strip_prefix("<string>")
+                .and_then(|s| s.strip_suffix("</string>"))
+        })
+        .any(|s| s.starts_with('/') && s.contains("Clash Verge.app") && std::path::Path::new(s).exists())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn detect_official_clash_verge_autostart() -> bool {
+    false
 }
 
 #[inline]

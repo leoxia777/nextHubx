@@ -28,6 +28,16 @@ export interface NexthubxClientState {
   profileUid?: string
   /** 分配给该席位的出口公网 IP,用于在 IP 信息卡片中比对实际出口是否一致。 */
   expectedExitIp?: string
+  /** 账号使用说明(后端「系统配置」下发,激活/sync 时更新);缺省时账号卡片回退内置文案。 */
+  usageTips?: string
+  /**
+   * 激活后的「连接验证」是否已走完(service 就绪 + TUN 开启 + 出口 IP 一致)。
+   * - `false`:激活码已校验通过、配置已导入,但中途某步未完成 → 重开 app 应**从验证流程续跑**,
+   *   而不是回到激活码输入(见 account-card 的 resume 逻辑)。
+   * - `true`:全流程完成,正常展示账号。
+   * - `undefined`:老版本写入的状态,视为已完成(不强制重验,避免打扰存量已激活用户)。
+   */
+  setupComplete?: boolean
 }
 
 export async function loadClientState(): Promise<NexthubxClientState | null> {

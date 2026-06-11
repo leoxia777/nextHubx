@@ -82,6 +82,7 @@ export interface TranslationResources {
             load: string
           }
           exitCheck: {
+            checking: string
             match: string
             mismatch: string
           }
@@ -259,8 +260,11 @@ export interface TranslationResources {
       brand: string
       clashVergeConflict: {
         appearedBody: string
+        blockingActivate: string
         confirm: string
+        recheck: string
         runningBody: string
+        steps: string
         title: string
       }
       connect: {

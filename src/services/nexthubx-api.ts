@@ -73,6 +73,8 @@ export interface ActivateResult {
   proxyConfig: ProxyConfig
   /** 分配给该席位的出口公网 IP,客户端用于比对实际出口。可能缺省(老后端/未分配)。 */
   expectedExitIp?: string
+  /** 账号使用说明(运营在后台「系统配置」维护,随激活下发)。缺省时客户端回退内置文案。 */
+  tips?: string | null
 }
 
 /** GET /api/client/sync 响应(active)。 */
@@ -84,6 +86,8 @@ export interface SyncActiveResult {
   configFingerprint: string
   /** 分配给该席位的出口公网 IP,客户端用于比对实际出口。可能缺省(老后端/未分配)。 */
   expectedExitIp?: string
+  /** 账号使用说明(运营在后台「系统配置」维护,随 sync 下发)。缺省时客户端回退内置文案。 */
+  tips?: string | null
 }
 
 export type SyncResult =

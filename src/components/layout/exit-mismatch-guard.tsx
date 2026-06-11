@@ -30,9 +30,10 @@ export const ExitMismatchGuard = () => {
   const { isActivated } = useNexthubxClient()
   const { data: ipInfo, refetch } = useIpInfoQuery()
 
-  const { status, expectedExitIp, actualIp } = useNexthubxExitGuard({
-    actualIp: ipInfo?.ip,
-  })
+  const { status, expectedExitIp, actualIp, setupInProgress } =
+    useNexthubxExitGuard({
+      actualIp: ipInfo?.ip,
+    })
 
   // 主动轮询:即使 IP 卡片未挂载 / 不在视口,也持续刷新实际 IP 以便后台检测。
   useEffect(() => {
@@ -43,7 +44,9 @@ export const ExitMismatchGuard = () => {
     return () => clearInterval(timer)
   }, [isActivated, refetch])
 
-  if (status !== 'mismatch') return null
+  // 初始验证(激活后 TUN 切换)期间的 mismatch 大概率是瞬态(IP 检测尚未走新出口),
+  // 不弹全屏警示——账号卡片/IP 卡片此时呈现「校验中」(UX:不吓用户)。
+  if (status !== 'mismatch' || setupInProgress) return null
 
   return (
     <Backdrop

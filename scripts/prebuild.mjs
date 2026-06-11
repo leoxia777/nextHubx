@@ -576,10 +576,13 @@ const resolveServicePermission = async () => {
 // =======================
 // Other resource resolvers (service, mmdb, geosite, geoip, enableLoopback)
 // =======================
+// NextHubX fork:服务身份已改名 com.nexthubx.app.service,与官方 Clash Verge 隔离。
+// 钉死到与 src-tauri/Cargo.toml 的 clash_verge_service_ipc 同一 tag(v2.3.1),保证下载的服务二进制
+// 版本 == crate::VERSION —— 否则 is_reinstall_service_needed 永远为 true 会导致重装循环(原 latest 隐患)。
 const SERVICE_LATEST_URL =
-  'https://github.com/clash-verge-rev/clash-verge-service-ipc/releases/latest'
+  'https://github.com/leoxia777/nexthubx-service-ipc/releases/tag/v2.3.1'
 const SERVICE_URL_PREFIX =
-  'https://github.com/clash-verge-rev/clash-verge-service-ipc/releases/download'
+  'https://github.com/leoxia777/nexthubx-service-ipc/releases/download'
 let SERVICE_VERSION
 
 const SERVICE_BINARIES = [

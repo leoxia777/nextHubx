@@ -4,6 +4,7 @@ import { asyncRetry } from 'foxts/async-retry'
 import { extractErrorMessage } from 'foxts/extract-error-message'
 import { once } from 'foxts/once'
 
+import { errInfo, nxDebug } from '@/services/nexthubx-debug'
 import { debugLog } from '@/utils/debug'
 
 const getUserAgentPromise = once(async () => {
@@ -145,7 +146,10 @@ export const getIpInfo = async (): Promise<
   const maxRetries = 2
   const serviceTimeout = 5000
 
-  const shuffledServices = IP_CHECK_SERVICES.toSorted(() => Math.random() - 0.5)
+  // 注:不用 Array.prototype.toSorted(ES2023)——旧 macOS 的 WKWebView 不支持会抛
+  // "toSorted is not a function" 致 IP 检测整条崩。改用 [...].sort 复制后排序(同效、兼容旧内核)。
+  const shuffledServices = [...IP_CHECK_SERVICES].sort(() => Math.random() - 0.5)
+  void nxDebug('ipcheck.start', { count: shuffledServices.length })
   let lastError: unknown | null = null
   const userAgent = await getUserAgentPromise()
   console.debug('User-Agent for IP detection:', userAgent)
@@ -189,6 +193,7 @@ export const getIpInfo = async (): Promise<
 
           if (data && data.ip) {
             debugLog(`IP检测成功，使用服务: ${service.url}`)
+            void nxDebug('ipcheck.ok', { ip: data.ip, service: service.url })
             return Object.assign(service.mapping(data), {
               // use last fetch success timestamp
               lastFetchTs: Date.now(),
@@ -213,6 +218,7 @@ export const getIpInfo = async (): Promise<
   }
 
   if (lastError) {
+    void nxDebug('ipcheck.allfail', errInfo(lastError))
     throw new Error(
       `所有IP检测服务都失败: ${extractErrorMessage(lastError) || '未知错误'}`,
     )

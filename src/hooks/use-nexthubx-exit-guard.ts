@@ -50,6 +50,8 @@ interface ExitGuardResult {
   status: ExitMatchStatus
   expectedExitIp: string | undefined
   actualIp: string | undefined
+  /** 初始验证(激活后 service→TUN→IP)进行中:UI 应显示「校验中」而非告警。 */
+  setupInProgress: boolean
 }
 
 /**
@@ -121,10 +123,15 @@ export function useNexthubxExitGuard({
     return null
   }, [normExpected, normActual, proxyConnected, stableActual])
 
+  // 初始验证(激活后 service→TUN→IP)尚未完成:TUN 切换中 IP 短暂为旧出口属预期,
+  // mismatch 大概率是瞬态 → 抑制系统通知/唤起窗口(及全屏警示,见 ExitMismatchGuard),
+  // 仅在卡片内呈现「校验中」。undefined(老状态)视为已完成,不抑制。
+  const setupInProgress = clientState?.setupComplete === false
+
   // 命中 mismatch → 系统通知 + 唤起主窗口(去抖:同一组合仅一次)
   const lastNotifiedRef = useRef<string>('')
   useEffect(() => {
-    if (status !== 'mismatch') {
+    if (status !== 'mismatch' || setupInProgress) {
       // 恢复一致 / 条件不足 → 重置去抖,允许下次再次通知
       if (status === 'match') lastNotifiedRef.current = ''
       return
@@ -163,7 +170,7 @@ export function useNexthubxExitGuard({
         console.error('[nexthubx] exit-guard window raise failed', err)
       }
     })()
-  }, [status, normExpected, normActual, t])
+  }, [status, normExpected, normActual, t, setupInProgress])
 
-  return { status, expectedExitIp, actualIp }
+  return { status, expectedExitIp, actualIp, setupInProgress }
 }
