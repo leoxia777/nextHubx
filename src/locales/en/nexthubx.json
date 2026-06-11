@@ -20,7 +20,7 @@
     "feedback": {
       "success": "Activated successfully, entering main view",
       "empty": "Please enter an activation token",
-      "invalid": "Activation token is invalid or expired, please contact your administrator",
+      "invalid": "Activation token is invalid or already used. If you activated this account on another device, contact your administrator with your account email to reset it, then retry.",
       "networkError": "Network error, please try again later",
       "configError": "Failed to import proxy configuration",
       "unknown": "Activation failed, please try again later"
