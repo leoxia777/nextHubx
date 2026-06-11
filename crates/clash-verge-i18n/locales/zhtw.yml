@@ -22,12 +22,12 @@ notifications:
     body: 訂閱已啟用。
   appQuit:
     title: 即將退出
-    body: Clash Verge 即將退出。
+    body: NextHubX 即將退出。
   appHidden:
     title: 應用已隱藏
-    body: Clash Verge 正在背景執行。
+    body: NextHubX 正在背景執行。
   updateReady:
-    title: Clash Verge Update
+    title: NextHubX 更新
     body: A new version (v{version}) has been downloaded and is ready to install.
     installNow: Install Now
     later: Later
