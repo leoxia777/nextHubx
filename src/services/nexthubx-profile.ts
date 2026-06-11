@@ -17,9 +17,22 @@ import {
 
 const MANAGED_PROFILE_NAME = 'nextHubx'
 
-async function findExistingUids(): Promise<Set<string>> {
+/** 列出当前所有 profile item(含 type/name,用于精确识别我们托管的 local 主配置)。 */
+async function listProfileItems(): Promise<IProfileItem[]> {
   const profiles = await getProfiles()
-  return new Set((profiles.items ?? []).map((item) => item.uid))
+  return profiles.items ?? []
+}
+
+/**
+ * 是否为 nextHubx 托管的 local 主配置。
+ *
+ * 关键:一次 `createProfile` 会同时落地 local 主配置 + 一组增强项
+ * (merge/script/rules/proxies/groups);只有 `type==='local'` 且 name 匹配的才是主配置。
+ * 若误把增强项(如 merge,文件仅几十字节的模板)当成 current,核心读它当主配置会抛
+ * 「failed to read current profile / YAML 读取错误」——这正是历史激活报错的根因。
+ */
+function isManagedLocal(item: IProfileItem): boolean {
+  return item.type === 'local' && item.name === MANAGED_PROFILE_NAME
 }
 
 /**
@@ -35,19 +48,21 @@ export async function importAndActivateProfile(
 ): Promise<string> {
   let targetUid = existingUid
 
-  // 复用已有托管 profile:确认仍存在 → 覆盖文件内容
+  // 复用已有托管 profile:必须确认它仍是我们的 local 主配置才覆盖内容。
+  // 历史 bug 可能把 merge/script 等增强项的 uid 误存为 profileUid → 此处校验丢弃,走下面新建自愈。
   if (targetUid) {
-    const uids = await findExistingUids()
-    if (uids.has(targetUid)) {
+    const item = (await listProfileItems()).find((p) => p.uid === targetUid)
+    if (item && isManagedLocal(item)) {
       await saveProfileFile(targetUid, yaml)
     } else {
       targetUid = undefined
     }
   }
 
-  // 首次 / 托管 profile 已被删除 → 新建并回查新 uid
+  // 首次 / 托管 profile 已失效 → 新建,并按 type+name 锁定新建的 local 主配置。
+  // 不能取「第一个新 uid」:createProfile 会同时产生多个新 item,取错(merge 项)会让 current 设错。
   if (!targetUid) {
-    const before = await findExistingUids()
+    const before = new Set((await listProfileItems()).map((p) => p.uid))
     await createProfile(
       {
         type: 'local',
@@ -58,9 +73,8 @@ export async function importAndActivateProfile(
       },
       yaml,
     )
-    const after = await getProfiles()
-    const created = (after.items ?? []).find(
-      (item) => !before.has(item.uid),
+    const created = (await listProfileItems()).find(
+      (p) => !before.has(p.uid) && isManagedLocal(p),
     )
     if (!created) {
       throw new Error('Failed to locate newly created nextHubx profile')
