@@ -215,19 +215,33 @@ pub fn detect_official_clash_verge() -> bool {
     })
 }
 
-/// 检测「官方 Clash Verge」是否配置了开机自启(供激活前门控,确保它不会重启后又抢占网络)。
+/// 检测「官方 Clash Verge」是否配置了**有效**的开机自启(供激活前门控,确保它不会重启后又抢占网络)。
 ///
-/// - macOS:检查其 LaunchAgent plist 是否存在
-///   (`~/Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist`);
+/// - macOS:检查其 LaunchAgent plist 是否存在,**并且** plist 指向的可执行文件仍存在。
+///   关键:把 Clash Verge.app 拖进垃圾箱**不会**删除这个 LaunchAgent plist,会留下一个指向「已删除
+///   app」的孤儿 plist。孤儿 plist 在登录时拉不起任何东西,不应再判为「自启开启」——否则用户删了
+///   CV 却仍被激活门控拦住(本次踩坑)。故读 plist 的 ProgramArguments 路径,校验其真实存在。
 /// - 其它平台:暂不检测(返回 false),激活门控在这些平台仅按进程运行态判断。
 #[cfg(target_os = "macos")]
 pub fn detect_official_clash_verge_autostart() -> bool {
-    match std::env::var_os("HOME") {
-        Some(home) => std::path::Path::new(&home)
-            .join("Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist")
-            .exists(),
-        None => false,
-    }
+    let Some(home) = std::env::var_os("HOME") else {
+        return false;
+    };
+    let plist = std::path::Path::new(&home)
+        .join("Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist");
+    let Ok(content) = std::fs::read_to_string(&plist) else {
+        return false; // plist 不存在 → 未配置自启
+    };
+    // 取 plist 里 ProgramArguments 的可执行路径(<string>/.../Clash Verge.app/.../clash-verge</string>),
+    // 仅当该文件仍存在才算「自启有效」(排除指向已删 app 的孤儿 plist)。
+    content
+        .lines()
+        .filter_map(|line| {
+            let t = line.trim();
+            t.strip_prefix("<string>")
+                .and_then(|s| s.strip_suffix("</string>"))
+        })
+        .any(|s| s.starts_with('/') && s.contains("Clash Verge.app") && std::path::Path::new(s).exists())
 }
 
 #[cfg(not(target_os = "macos"))]
