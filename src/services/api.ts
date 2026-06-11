@@ -145,7 +145,9 @@ export const getIpInfo = async (): Promise<
   const maxRetries = 2
   const serviceTimeout = 5000
 
-  const shuffledServices = IP_CHECK_SERVICES.toSorted(() => Math.random() - 0.5)
+  // 注:不用 Array.prototype.toSorted(ES2023)——旧 macOS 的 WKWebView 不支持会抛
+  // "toSorted is not a function" 致 IP 检测整条崩。改用 [...].sort 复制后排序(同效、兼容旧内核)。
+  const shuffledServices = [...IP_CHECK_SERVICES].sort(() => Math.random() - 0.5)
   let lastError: unknown | null = null
   const userAgent = await getUserAgentPromise()
   console.debug('User-Agent for IP detection:', userAgent)
