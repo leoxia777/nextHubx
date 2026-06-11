@@ -12,8 +12,23 @@ import {
 import { showNotice } from '@/services/notice-service'
 
 const CLIENT_STATE_KEY = ['nexthubx-client-state']
-/** 定期同步间隔:每 10 分钟。 */
-const SYNC_INTERVAL_MS = 10 * 60 * 1000
+/** 定期同步间隔:每 2 分钟(兜底)。原 10 分钟过慢——重置后用户会先撞上"IP 检测失败"才被感知。 */
+const SYNC_INTERVAL_MS = 2 * 60 * 1000
+
+/**
+ * 模块级「立即同步」触发器(去抖 20s)。供 IP 检测/代理疑似中断等场景跨组件请求一次尽快同步:
+ * 代理断开时经**直连**的 `/api/client/sync` 尽早拿到 401/revoked → 感知到被重置(设备/订阅重置),
+ * 而非干等下次心跳。前提:`gate.nexthubx.com` 已在 clash 规则里走 DIRECT,代理断了此请求仍可达后端。
+ */
+let immediateSyncRef: (() => Promise<void>) | null = null
+let lastImmediateAt = 0
+const IMMEDIATE_MIN_GAP_MS = 20 * 1000
+export function requestImmediateNexthubxSync(): void {
+  const now = Date.now()
+  if (now - lastImmediateAt < IMMEDIATE_MIN_GAP_MS) return
+  lastImmediateAt = now
+  void immediateSyncRef?.()
+}
 
 /**
  * 读取本地 nextHubx 客户端凭证 / 账号(响应式)。
@@ -110,12 +125,17 @@ export const useNexthubxAutoSync = () => {
   }, [qc])
 
   useEffect(() => {
+    // 注册模块级「立即同步」触发器(供 IP/代理失败等场景跨组件调用)
+    immediateSyncRef = runSync
     // 启动即同步一次
     void runSync()
     const timer = setInterval(() => {
       void runSync()
     }, SYNC_INTERVAL_MS)
-    return () => clearInterval(timer)
+    return () => {
+      clearInterval(timer)
+      if (immediateSyncRef === runSync) immediateSyncRef = null
+    }
   }, [runSync])
 
   return { runSync }
