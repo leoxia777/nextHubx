@@ -23,19 +23,21 @@ const NexthubxActivatePage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { mutateSystemState } = useSystemState()
+  const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const onSubmit = useLockFn(async () => {
+    const trimmedEmail = email.trim()
     const trimmed = token.trim()
-    if (!trimmed) {
+    if (!trimmedEmail || !trimmed) {
       showNotice.error('nexthubx.activate.feedback.empty')
       return
     }
 
     setSubmitting(true)
     try {
-      const result = await activate(trimmed)
+      const result = await activate(trimmedEmail, trimmed)
 
       // 复用已有托管 profile uid(若之前激活过)以更新而非堆积
       const prev = await loadClientState()
@@ -109,6 +111,16 @@ const NexthubxActivatePage = () => {
         <Stack spacing={2}>
           <TextField
             fullWidth
+            type="email"
+            label={t('nexthubx.activate.emailLabel')}
+            placeholder={t('nexthubx.activate.emailPlaceholder')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={submitting}
+            autoFocus
+          />
+          <TextField
+            fullWidth
             label={t('nexthubx.activate.tokenLabel')}
             placeholder={t('nexthubx.activate.tokenPlaceholder')}
             value={token}
@@ -119,7 +131,6 @@ const NexthubxActivatePage = () => {
               }
             }}
             disabled={submitting}
-            autoFocus
           />
           <Button
             fullWidth

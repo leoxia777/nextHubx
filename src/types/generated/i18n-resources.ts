@@ -237,6 +237,8 @@ export interface TranslationResources {
         }
       }
       activate: {
+        emailLabel: string
+        emailPlaceholder: string
         feedback: {
           configError: string
           empty: string
@@ -246,6 +248,8 @@ export interface TranslationResources {
           unknown: string
         }
         reactivateTitle: string
+        resetNotice: string
+        resetNoticeWithEmail: string
         submit: string
         submitting: string
         subtitle: string

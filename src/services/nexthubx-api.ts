@@ -6,8 +6,8 @@
  * **不要改用 webview 原生 fetch**。参考 `src/services/api.ts`(CVR 下载/IP 检测同样用此 plugin fetch)。
  */
 import { getName, getVersion } from '@tauri-apps/api/app'
-import { fetch } from '@tauri-apps/plugin-http'
 import { BaseDirectory, exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
 
 /**
  * 后端控制面 API base —— 业务层域名(nexthubx.com)。
@@ -118,12 +118,12 @@ async function buildUserAgent(): Promise<string> {
 }
 
 /**
- * 激活:POST /api/activate { token }
+ * 激活:POST /api/activate { email, token }(双因子:邮箱 + 激活码)
  * - 200 → 返回 clientToken / 账号 / proxyConfig
- * - 409 → 抛 ActivationInvalidError(激活码失效)
+ * - 409 → 抛 ActivationInvalidError(邮箱或激活码不正确/已失效,后端不区分以防枚举)
  * - 其他非 2xx → 抛 Error
  */
-export async function activate(token: string): Promise<ActivateResult> {
+export async function activate(email: string, token: string): Promise<ActivateResult> {
   const userAgent = await buildUserAgent()
   const response = await fetch(`${NEXTHUBX_API_BASE}/api/activate`, {
     method: 'POST',
@@ -132,7 +132,7 @@ export async function activate(token: string): Promise<ActivateResult> {
       'Content-Type': 'application/json',
       'User-Agent': userAgent,
     },
-    body: JSON.stringify({ token, deviceId: await ensureDeviceId() }),
+    body: JSON.stringify({ email: email.trim(), token, deviceId: await ensureDeviceId() }),
   })
 
   if (response.status === 409) {

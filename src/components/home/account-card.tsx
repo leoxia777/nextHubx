@@ -40,7 +40,12 @@ import {
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { errInfo, nxDebug } from '@/services/nexthubx-debug'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
-import { loadClientState, saveClientState } from '@/services/nexthubx-store'
+import {
+  loadClientState,
+  loadResetNotice,
+  saveClientState,
+  type NexthubxResetNotice,
+} from '@/services/nexthubx-store'
 import { showNotice } from '@/services/notice-service'
 
 import { EnhancedCard } from './enhanced-card'
@@ -72,7 +77,10 @@ export const AccountCard = () => {
   const { installServiceAndRestartCore } = useServiceInstaller()
   const { verge, mutateVerge, patchVerge } = useVerge()
 
+  const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
+  // 「被重置」通知:席位被管理员重置/作废后常驻提示(含账号邮箱)+ 预填邮箱框。
+  const [resetNotice, setResetNotice] = useState<NexthubxResetNotice | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [reactivating, setReactivating] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -260,9 +268,22 @@ export const AccountCard = () => {
     if (showForm) void checkClashVergeGate()
   }, [showForm, checkClashVergeGate])
 
+  // 未激活时加载「被重置」通知:常驻提示是哪个账号被重置(用户不会一脸懵地回到激活页)+ 预填邮箱。
+  useEffect(() => {
+    if (isActivated) {
+      setResetNotice(null)
+      return
+    }
+    void loadResetNotice().then((n) => {
+      setResetNotice(n)
+      if (n?.email) setEmail((cur) => cur || n.email!)
+    })
+  }, [isActivated])
+
   const onActivate = useLockFn(async () => {
+    const trimmedEmail = email.trim()
     const trimmed = token.trim()
-    if (!trimmed) {
+    if (!trimmedEmail || !trimmed) {
       showNotice.error('nexthubx.activate.feedback.empty')
       return
     }
@@ -276,7 +297,7 @@ export const AccountCard = () => {
     setSubmitting(true)
     void nxDebug('activate.start')
     try {
-      const result = await activate(trimmed)
+      const result = await activate(trimmedEmail, trimmed)
       void nxDebug('activate.ok', {
         email: result.identityEmail,
         expectedExitIp: result.expectedExitIp,
@@ -317,6 +338,8 @@ export const AccountCard = () => {
 
       showNotice.success('nexthubx.activate.feedback.success')
       setToken('')
+      setEmail('')
+      setResetNotice(null)
       refresh()
 
       // 进入「验证中」:先检查 service,再连接,再验证出口 IP(账号此时不显示)
@@ -455,6 +478,18 @@ export const AccountCard = () => {
           <Typography variant="body2" color="text.secondary">
             {t('nexthubx.activate.subtitle')}
           </Typography>
+          {resetNotice && (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              icon={<WarningAmberRounded fontSize="inherit" />}
+              sx={{ alignItems: 'flex-start' }}
+            >
+              {resetNotice.email
+                ? t('nexthubx.activate.resetNoticeWithEmail', { email: resetNotice.email })
+                : t('nexthubx.activate.resetNotice')}
+            </Alert>
+          )}
           {cvBlock && (
             <Alert
               severity="warning"
@@ -473,6 +508,16 @@ export const AccountCard = () => {
               {`${t('nexthubx.clashVergeConflict.blockingActivate')}\n\n${t('nexthubx.clashVergeConflict.steps')}`}
             </Alert>
           )}
+          <TextField
+            fullWidth
+            size="small"
+            type="email"
+            label={t('nexthubx.activate.emailLabel')}
+            placeholder={t('nexthubx.activate.emailPlaceholder')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={submitting}
+          />
           <TextField
             fullWidth
             size="small"

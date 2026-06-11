@@ -81,7 +81,12 @@ export const useNexthubxAutoSync = () => {
       }
 
       if (result.status === 'revoked' || result.status === 'unauthorized') {
-        await clearClientState()
+        // 保留账号邮箱 + 原因到「被重置」通知:激活界面常驻展示是哪个账号被重置 + 预填邮箱。
+        await clearClientState({
+          email: state.identityEmail,
+          reason: result.status,
+          at: new Date().toISOString(),
+        })
         qc.invalidateQueries({ queryKey: CLIENT_STATE_KEY })
         showNotice.info('nexthubx.sync.revokedNotice')
         return
