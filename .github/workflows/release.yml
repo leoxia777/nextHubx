@@ -330,11 +330,11 @@ jobs:
             put "$1" "download/${TAG}/$(basename "$1")" "$3" "$IMM"   # 版本化归档
             put "$1" "download/latest/$2" "$3" 'no-cache'             # 架构固定直链
           }
-          arch_put "$MAC_ARM" "NextHubX-mac-arm64.dmg" "$DMG"
+          arch_put "$MAC_ARM" "NextHubX-mac-aarch64.dmg" "$DMG"
           arch_put "$MAC_X64" "NextHubX-mac-x64.dmg"   "$DMG"
           arch_put "$WIN_X64" "NextHubX-win-x64.exe"   "$EXE"
           arch_put "$WIN_ARM" "NextHubX-win-arm64.exe" "$EXE"
-          # 向后兼容旧固定名(指向主流架构:mac→arm64, win→x64)
+          # 向后兼容旧固定名(指向主流架构:mac→aarch64, win→x64)
           [ -n "$MAC_ARM" ] && put "$MAC_ARM" "download/latest/NextHubX-mac.dmg" "$DMG" 'no-cache'
           [ -n "$WIN_X64" ] && put "$WIN_X64" "download/latest/NextHubX-win.exe" "$EXE" 'no-cache'
           echo "Installers synced to R2: download/${TAG}/ + download/latest/ (4 arch)"
