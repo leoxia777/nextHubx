@@ -30,6 +30,21 @@ impl CoreManager {
         let clash_core = Config::verge().await.latest_arc().get_valid_clash_core();
         let config_dir = dirs::app_home_dir()?;
 
+        // 起新先清旧:杀掉属于本应用的残留 mihomo 核心(app 被强退/崩溃/覆盖安装会留下孤儿,
+        // 不清理则新旧核心抢同一 mixed 端口 → 核心坏、TUN 起不来,且会累积)。按配置目录精确匹配,
+        // 不误杀官方 Clash Verge 的同名核心。此刻尚未 spawn 新核心,只会清掉孤儿/残留。
+        if let Ok(marker) = dirs::path_to_str(&config_dir) {
+            let killed = tauri_plugin_clash_verge_sysinfo::kill_stray_mihomo(marker);
+            if killed > 0 {
+                logging!(
+                    warn,
+                    Type::Core,
+                    "sidecar 启动前清理残留 mihomo 核心 {} 个(防端口抢占)",
+                    killed
+                );
+            }
+        }
+
         #[cfg(unix)]
         let previous_mask = unsafe { tauri_plugin_clash_verge_sysinfo::libc::umask(0o007) };
         let (mut rx, child) = app_handle
