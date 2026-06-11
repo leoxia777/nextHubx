@@ -294,6 +294,75 @@ pub fn kill_stray_mihomo(config_marker: &str) -> usize {
     killed
 }
 
+/// 一键关停系统中正在运行的「官方 Clash Verge」(GUI + 其 root 核心 verge-mihomo)。
+///
+/// 背景(本次踩坑):CV 服务模式下,退出 GUI 后核心仍由其 **root 特权服务**托管常驻、继续占着
+/// TUN/网络,用户在 CV 内根本停不掉 → NextHubX 激活门控始终被拦。此处一键关停。
+/// 核心是 root 进程(TUN 需 root),普通权限杀不掉:macOS 用 osascript 提权(**弹一次系统密码**),
+/// 一次性杀掉 CV 的 root 核心 + 用户态 GUI。**只匹配 `Clash Verge.app` 路径下的进程,
+/// 绝不误杀 NextHubX 自身的 verge-mihomo(其路径含 com.nexthubx.app)。**
+///
+/// 返回:Ok(()) = 已关停并确认 CV 不再运行;Err("CANCELLED") = 用户取消了密码框;
+/// Err("STILL_RUNNING") = 杀后仍在(罕见,可能被服务拉起,需手动处理);Err(其它) = 执行失败。
+#[cfg(target_os = "macos")]
+pub fn stop_official_clash_verge() -> Result<(), String> {
+    // 一条提权 shell 同时杀 CV 核心 + GUI;`|| true` 容忍无匹配进程(pkill 无匹配返回 1)。
+    let sh = "/usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/verge-mihomo' || true; \
+              /usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/clash-verge' || true";
+    let script = format!("do shell script \"{sh}\" with administrator privileges");
+    let output = std::process::Command::new("/usr/bin/osascript")
+        .arg("-e")
+        .arg(&script)
+        .output()
+        .map_err(|e| format!("启动 osascript 失败: {e}"))?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        // 用户取消密码框 → osascript 报 "User canceled. (-128)"
+        if err.contains("-128") || err.to_lowercase().contains("cancel") {
+            return Err("CANCELLED".into());
+        }
+        return Err(format!("关停失败: {}", err.trim()));
+    }
+    // 等核心真正消失(最多约 2s)再返回,避免前端立刻重新检测时进程尚未退出。
+    for _ in 0..10 {
+        if !detect_official_clash_verge() {
+            return Ok(());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+    Err("STILL_RUNNING".into())
+}
+
+/// Windows:杀官方 CV 进程(核心可能由服务以 SYSTEM 运行,taskkill 需管理员权限;
+/// 若 NextHubX 非管理员可能杀不掉,前端据返回提示手动)。
+#[cfg(target_os = "windows")]
+pub fn stop_official_clash_verge() -> Result<(), String> {
+    let _ = std::process::Command::new("taskkill")
+        .args([
+            "/F",
+            "/IM",
+            "verge-mihomo.exe",
+            "/IM",
+            "verge-mihomo-alpha.exe",
+            "/IM",
+            "clash-verge.exe",
+        ])
+        .output()
+        .map_err(|e| format!("taskkill 失败: {e}"))?;
+    for _ in 0..10 {
+        if !detect_official_clash_verge() {
+            return Ok(());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+    Err("STILL_RUNNING".into())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+pub fn stop_official_clash_verge() -> Result<(), String> {
+    Err("当前平台暂不支持一键关停".into())
+}
+
 #[inline]
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::<R>::new("clash_verge_sysinfo")

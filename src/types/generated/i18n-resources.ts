@@ -266,6 +266,13 @@ export interface TranslationResources {
         appearedBody: string
         blockingActivate: string
         confirm: string
+        forceStop: string
+        forceStopCancelled: string
+        forceStopFailed: string
+        forceStopHint: string
+        forceStopOk: string
+        forceStopping: string
+        forceStopStillRunning: string
         recheck: string
         runningBody: string
         steps: string

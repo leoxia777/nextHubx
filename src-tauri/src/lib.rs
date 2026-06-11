@@ -136,6 +136,7 @@ mod app_init {
             tauri_plugin_clash_verge_sysinfo::commands::export_diagnostic_info,
             tauri_plugin_clash_verge_sysinfo::commands::detect_official_clash_verge,
             tauri_plugin_clash_verge_sysinfo::commands::detect_official_clash_verge_autostart,
+            tauri_plugin_clash_verge_sysinfo::commands::stop_official_clash_verge,
             cmd::is_port_in_use,
             cmd::get_sys_proxy,
             cmd::get_auto_proxy,

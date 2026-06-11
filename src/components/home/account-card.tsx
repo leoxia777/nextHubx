@@ -36,6 +36,7 @@ import {
   detectOfficialClashVerge,
   detectOfficialClashVergeAutostart,
   isServiceAvailable,
+  stopOfficialClashVerge,
 } from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { errInfo, nxDebug } from '@/services/nexthubx-debug'
@@ -151,6 +152,33 @@ export const AccountCard = () => {
     setCvBlock(null)
     return true
   }, [])
+
+  const [stoppingCv, setStoppingCv] = useState(false)
+  // 一键关停官方 Clash Verge:杀掉其 root 核心 + GUI(macOS 弹一次系统密码),再重新检测放行。
+  // CV 服务模式下退 GUI 核心仍由 root 服务托管常驻、用户停不掉,故提供此入口。
+  const onForceStopCv = useLockFn(async () => {
+    setStoppingCv(true)
+    try {
+      // CV 可能已被手动关掉 → 先复检,避免白弹一次密码框。
+      if (await detectOfficialClashVerge()) {
+        await stopOfficialClashVerge()
+      }
+      const ok = await checkClashVergeGate()
+      if (ok) showNotice.success('nexthubx.clashVergeConflict.forceStopOk')
+    } catch (err) {
+      const code = err instanceof Error ? err.message : String(err)
+      void nxDebug('gate.forceStop.fail', errInfo(err))
+      if (code.includes('CANCELLED')) {
+        showNotice.info('nexthubx.clashVergeConflict.forceStopCancelled')
+      } else if (code.includes('STILL_RUNNING')) {
+        showNotice.error('nexthubx.clashVergeConflict.forceStopStillRunning')
+      } else {
+        showNotice.error('nexthubx.clashVergeConflict.forceStopFailed')
+      }
+    } finally {
+      setStoppingCv(false)
+    }
+  })
 
   // 强制安装 service(验证流程中的 b 步)
   const onInstallService = useLockFn(async () => {
@@ -498,14 +526,21 @@ export const AccountCard = () => {
                 <Button
                   color="inherit"
                   size="small"
-                  onClick={() => void checkClashVergeGate()}
+                  variant="outlined"
+                  disabled={stoppingCv}
+                  startIcon={
+                    stoppingCv ? <CircularProgress size={14} color="inherit" /> : undefined
+                  }
+                  onClick={() => void onForceStopCv()}
                 >
-                  {t('nexthubx.clashVergeConflict.recheck')}
+                  {stoppingCv
+                    ? t('nexthubx.clashVergeConflict.forceStopping')
+                    : t('nexthubx.clashVergeConflict.forceStop')}
                 </Button>
               }
               sx={{ whiteSpace: 'pre-line', alignItems: 'flex-start' }}
             >
-              {`${t('nexthubx.clashVergeConflict.blockingActivate')}\n\n${t('nexthubx.clashVergeConflict.steps')}`}
+              {`${t('nexthubx.clashVergeConflict.blockingActivate')}\n\n${t('nexthubx.clashVergeConflict.forceStopHint')}`}
             </Alert>
           )}
           <TextField
