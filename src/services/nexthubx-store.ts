@@ -63,15 +63,43 @@ export async function saveClientState(
 }
 
 /**
- * 清除凭证(席位作废 / 重激活前)。capabilities 仅放行 `fs:allow-write-file`(无 remove),
- * 故用写入空对象「抹除」凭证内容(load 时无 clientToken 即视为未激活),不物理删文件。
+ * 「被重置」通知:席位被管理员重置/作废后,sync 清凭证时留下,供激活界面常驻展示
+ * (告诉用户是哪个账号被重置、为何突然回到激活页),并预填邮箱框。重激活成功即被 saveClientState 覆盖清除。
  */
-export async function clearClientState(): Promise<void> {
+export interface NexthubxResetNotice {
+  /** 被重置席位的账号邮箱(清凭证前保留,供用户辨识 + 找管理员)。可能缺失(老状态无邮箱)。 */
+  email?: string
+  /** 原因:401(凭证/设备失效)或 revoked(席位作废)。 */
+  reason: 'unauthorized' | 'revoked'
+  /** 触发时间(ISO)。 */
+  at: string
+}
+
+/**
+ * 清除凭证(席位作废 / 重激活前)。capabilities 仅放行 `fs:allow-write-file`(无 remove),
+ * 故用写入「抹除」凭证内容(load 时无 clientToken 即视为未激活),不物理删文件。
+ * 传入 resetNotice 时保留它(供激活界面常驻提示 + 邮箱预填),其余凭证/账号一律清掉。
+ */
+export async function clearClientState(resetNotice?: NexthubxResetNotice): Promise<void> {
   try {
-    await writeTextFile(STORE_FILE, JSON.stringify({}), {
+    await writeTextFile(STORE_FILE, JSON.stringify(resetNotice ? { resetNotice } : {}), {
       baseDir: STORE_BASE_DIR,
     })
   } catch (err) {
     console.error('[nexthubx-store] clear failed', err)
+  }
+}
+
+/** 读「被重置」通知(无 clientToken 时仍可读);不存在 → null。 */
+export async function loadResetNotice(): Promise<NexthubxResetNotice | null> {
+  try {
+    const present = await exists(STORE_FILE, { baseDir: STORE_BASE_DIR })
+    if (!present) return null
+    const raw = await readTextFile(STORE_FILE, { baseDir: STORE_BASE_DIR })
+    const parsed = JSON.parse(raw) as { resetNotice?: NexthubxResetNotice }
+    return parsed?.resetNotice ?? null
+  } catch (err) {
+    console.error('[nexthubx-store] load reset notice failed', err)
+    return null
   }
 }

@@ -7,9 +7,13 @@
   },
   "activate": {
     "title": "激活 NextHubX",
-    "subtitle": "输入激活码激活您的账号",
+    "subtitle": "输入账号邮箱和激活码激活您的账号",
+    "emailLabel": "账号邮箱",
+    "emailPlaceholder": "请输入管理员提供的账号邮箱",
     "tokenLabel": "激活码",
     "tokenPlaceholder": "请输入激活码",
+    "resetNotice": "此设备已被重置或席位已失效，请使用激活码重新激活。",
+    "resetNoticeWithEmail": "账号 {{email}} 已被重置或失效，请使用该账号的邮箱与激活码重新激活；如需新激活码请联系管理员。",
     "submit": "激活",
     "submitting": "正在激活…",
     "reactivateTitle": "重新激活",
@@ -19,8 +23,8 @@
     },
     "feedback": {
       "success": "激活成功，正在进入主界面",
-      "empty": "请输入激活码",
-      "invalid": "激活码无效或已被使用。如曾在其他设备激活过本账号，请凭你的账号邮箱联系管理员重置后重试。",
+      "empty": "请输入账号邮箱和激活码",
+      "invalid": "邮箱或激活码不正确、或激活码已被使用/失效。请核对管理员提供的账号邮箱与激活码后重试；如曾在其他设备激活过，请联系管理员重置。",
       "networkError": "网络错误，请稍后重试",
       "configError": "导入代理配置失败",
       "unknown": "激活失败，请稍后重试"

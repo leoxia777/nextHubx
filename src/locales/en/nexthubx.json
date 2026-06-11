@@ -7,9 +7,13 @@
   },
   "activate": {
     "title": "Activate NextHubX",
-    "subtitle": "Enter your activation code to activate your account",
+    "subtitle": "Enter your account email and activation code to activate",
+    "emailLabel": "Account email",
+    "emailPlaceholder": "Email provided by your administrator",
     "tokenLabel": "Activation token",
     "tokenPlaceholder": "Enter activation token",
+    "resetNotice": "This device has been reset or your seat is no longer valid. Please reactivate with your activation code.",
+    "resetNoticeWithEmail": "Account {{email}} has been reset or is no longer valid. Please reactivate with this account's email and activation code; contact your administrator for a new code.",
     "submit": "Activate",
     "submitting": "Activating…",
     "reactivateTitle": "Reactivate",
@@ -19,8 +23,8 @@
     },
     "feedback": {
       "success": "Activated successfully, entering main view",
-      "empty": "Please enter an activation token",
-      "invalid": "Activation token is invalid or already used. If you activated this account on another device, contact your administrator with your account email to reset it, then retry.",
+      "empty": "Please enter your account email and activation code",
+      "invalid": "Email or activation code is incorrect, or the code has already been used/expired. Double-check the account email and code from your administrator, then retry. If you activated on another device, contact your administrator to reset it.",
       "networkError": "Network error, please try again later",
       "configError": "Failed to import proxy configuration",
       "unknown": "Activation failed, please try again later"
