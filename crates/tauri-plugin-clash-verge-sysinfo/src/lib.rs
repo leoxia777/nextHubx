@@ -249,6 +249,51 @@ pub fn detect_official_clash_verge_autostart() -> bool {
     false
 }
 
+/// 杀掉属于**本应用**的残留 mihomo 核心进程(按命令行含 `config_marker` 精确匹配)。返回杀掉的数量。
+///
+/// 背景(本次踩坑):sidecar 模式下核心由 app 直接 spawn;app 被**强制退出/崩溃/运行中被覆盖安装**时,
+/// Tauri 不回收该子进程 → 留下孤儿核心。下次启动若不清理就再 spawn 一个,新旧核心抢同一 mixed 端口
+/// (`address already in use`)→ 核心坏、TUN 起不来,并不断累积(本次实测累积到 4 个)。
+///
+/// 安全:`config_marker` 传本应用配置目录(含 `com.nexthubx.app`),只杀命令行带该标识的核心,
+/// **绝不误杀官方 Clash Verge 的同名 `verge-mihomo`**(其命令行带 `io.github.clash-verge-rev` 配置目录)。
+/// 在 `start_core_by_sidecar` spawn 前调用(此刻还没有新核心,只会清掉孤儿/残留),实现「起新先清旧」自愈。
+pub fn kill_stray_mihomo(config_marker: &str) -> usize {
+    if config_marker.is_empty() {
+        return 0;
+    }
+    let marker = config_marker.to_lowercase();
+    let mut system = System::new_with_specifics(
+        RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_cmd(UpdateKind::Always)),
+    );
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::nothing().with_cmd(UpdateKind::Always),
+    );
+    let mut killed = 0usize;
+    for process in system.processes().values() {
+        // 只认 mihomo 核心(verge-mihomo / verge-mihomo-alpha)。
+        if !process.name().to_string_lossy().to_lowercase().contains("verge-mihomo") {
+            continue;
+        }
+        // 命令行必须含本应用配置目录标识,否则可能是官方 CV 的核心 → 跳过,不误杀。
+        let cmd_joined = process
+            .cmd()
+            .iter()
+            .map(|s| s.to_string_lossy().to_lowercase())
+            .collect::<Vec<_>>()
+            .join(" ");
+        if !cmd_joined.contains(&marker) {
+            continue;
+        }
+        if process.kill() {
+            killed += 1;
+        }
+    }
+    killed
+}
+
 #[inline]
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::<R>::new("clash_verge_sysinfo")
