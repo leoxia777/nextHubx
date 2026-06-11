@@ -598,3 +598,16 @@ export const detectOfficialClashVerge = async () => {
     return false
   }
 }
+
+/**
+ * 检测官方 Clash Verge 是否配置了开机自启(macOS 查其 LaunchAgent plist;其它平台恒为 false)。
+ * 供激活前门控:CV 自启未关 → 重启后会再次抢占网络服务,需先让用户关掉。
+ */
+export const detectOfficialClashVergeAutostart = async () => {
+  try {
+    return await invoke<boolean>('detect_official_clash_verge_autostart')
+  } catch (error) {
+    console.error('检测官方 Clash Verge 开机自启失败:', error)
+    return false
+  }
+}

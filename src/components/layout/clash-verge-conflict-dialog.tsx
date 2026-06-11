@@ -15,10 +15,12 @@ export const ClashVergeConflictDialog = () => {
   const { t } = useTranslation()
   const { open, mode, dismiss } = useClashVergeConflict()
 
-  const body =
+  const lead =
     mode === 'appeared'
       ? t('nexthubx.clashVergeConflict.appearedBody')
       : t('nexthubx.clashVergeConflict.runningBody')
+  // 引言 + 分步操作指引(关 TUN → 关开机自启 → 退出);steps 内含换行,pre-line 渲染。
+  const body = `${lead}\n\n${t('nexthubx.clashVergeConflict.steps')}`
 
   return (
     <BaseDialog
@@ -29,7 +31,7 @@ export const ClashVergeConflictDialog = () => {
       onOk={dismiss}
       onClose={dismiss}
     >
-      <Typography sx={{ maxWidth: 420 }}>{body}</Typography>
+      <Typography sx={{ maxWidth: 440, whiteSpace: 'pre-line' }}>{body}</Typography>
     </BaseDialog>
   )
 }

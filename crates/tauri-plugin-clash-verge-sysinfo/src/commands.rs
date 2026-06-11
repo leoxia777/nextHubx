@@ -61,6 +61,12 @@ pub fn detect_official_clash_verge() -> Result<bool, Error> {
     Ok(crate::detect_official_clash_verge())
 }
 
+/// 检测官方 Clash Verge 是否配置了开机自启(macOS 查其 LaunchAgent plist;其它平台返回 false)。
+#[command]
+pub fn detect_official_clash_verge_autostart() -> Result<bool, Error> {
+    Ok(crate::detect_official_clash_verge_autostart())
+}
+
 #[command]
 pub fn export_diagnostic_info<R: Runtime>(
     app_handle: AppHandle<R>,

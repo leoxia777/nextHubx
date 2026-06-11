@@ -205,6 +205,26 @@ pub fn detect_official_clash_verge() -> bool {
     })
 }
 
+/// 检测「官方 Clash Verge」是否配置了开机自启(供激活前门控,确保它不会重启后又抢占网络)。
+///
+/// - macOS:检查其 LaunchAgent plist 是否存在
+///   (`~/Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist`);
+/// - 其它平台:暂不检测(返回 false),激活门控在这些平台仅按进程运行态判断。
+#[cfg(target_os = "macos")]
+pub fn detect_official_clash_verge_autostart() -> bool {
+    match std::env::var_os("HOME") {
+        Some(home) => std::path::Path::new(&home)
+            .join("Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist")
+            .exists(),
+        None => false,
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn detect_official_clash_verge_autostart() -> bool {
+    false
+}
+
 #[inline]
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::<R>::new("clash_verge_sysinfo")

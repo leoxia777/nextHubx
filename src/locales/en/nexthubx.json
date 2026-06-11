@@ -102,8 +102,11 @@
   },
   "clashVergeConflict": {
     "title": "Clash Verge conflict detected",
-    "runningBody": "Clash Verge is running. It will compete with NextHubX for the same network service and cause your connections to keep dropping. Please close Clash Verge first.",
-    "appearedBody": "Clash Verge has just started. It will disconnect your connection. Please close it.",
+    "runningBody": "Clash Verge is running and will compete with NextHubX for the same network service, causing your connections to keep dropping. Please fully close it by following these steps:",
+    "appearedBody": "Clash Verge has just started and will disconnect your connection. Please fully close it by following these steps:",
+    "steps": "1. Open Clash Verge → Settings → System Settings and turn off the \"TUN Mode\" toggle;\n2. On the same page, turn off \"Launch at startup\" (otherwise it will auto-run again after reboot and conflict);\n3. Quit Clash Verge: click the Clash Verge icon in the menu bar / tray and choose \"Quit\".",
+    "blockingActivate": "Before activating, fully close Clash Verge (turn off TUN, turn off launch-at-startup, then quit) — otherwise the connections conflict. Follow the steps below and retry:",
+    "recheck": "Re-check",
     "confirm": "Got it"
   }
 }

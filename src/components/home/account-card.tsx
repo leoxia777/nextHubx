@@ -32,7 +32,11 @@ import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
 import { useServiceInstaller } from '@/hooks/use-service-installer'
 import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
-import { isServiceAvailable } from '@/services/cmds'
+import {
+  detectOfficialClashVerge,
+  detectOfficialClashVergeAutostart,
+  isServiceAvailable,
+} from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
 import { loadClientState, saveClientState } from '@/services/nexthubx-store'
@@ -76,6 +80,11 @@ export const AccountCard = () => {
   const [verifyPhase, setVerifyPhase] = useState<VerifyPhase | null>(null)
   const [serviceFailures, setServiceFailures] = useState(0)
   const [installing, setInstalling] = useState(false)
+  // 激活前门控:检测到官方 Clash Verge 正在运行 / 开机自启未关时,记录原因并阻断激活。
+  const [cvBlock, setCvBlock] = useState<{
+    running: boolean
+    autostart: boolean
+  } | null>(null)
 
   // 验证中持续轮询实际出口 IP,交给共享守卫做比对(防误报 5 条件)
   const verifying = verifyPhase !== null
@@ -115,6 +124,23 @@ export const AccountCard = () => {
     },
     [verge, mutateVerge, patchVerge],
   )
+
+  // 激活前门控:检测官方 Clash Verge 是否「正在运行」或「开机自启未关」。
+  // 任一命中 → 记录到 cvBlock(渲染指引 + 阻断激活),清空则放行。返回是否通过。
+  // 说明:CV 的 TUN 开关无法直接读;但「CV 未运行」即保证其 TUN 不活跃(退出=关 TUN),
+  // 自启则查其 LaunchAgent。两者皆否 → CV 现在和重启后都不会抢占网络。
+  const checkClashVergeGate = useCallback(async (): Promise<boolean> => {
+    const [running, autostart] = await Promise.all([
+      detectOfficialClashVerge(),
+      detectOfficialClashVergeAutostart(),
+    ])
+    if (running || autostart) {
+      setCvBlock({ running, autostart })
+      return false
+    }
+    setCvBlock(null)
+    return true
+  }, [])
 
   // 强制安装 service(验证流程中的 b 步)
   const onInstallService = useLockFn(async () => {
@@ -220,10 +246,21 @@ export const AccountCard = () => {
     }
   }, [isActivated, clientState?.setupComplete, verifyPhase, reactivating])
 
+  // 显示激活表单时主动检测一次 Clash Verge 冲突,提前把门控指引展示出来(无需等用户点激活)。
+  useEffect(() => {
+    if (showForm) void checkClashVergeGate()
+  }, [showForm, checkClashVergeGate])
+
   const onActivate = useLockFn(async () => {
     const trimmed = token.trim()
     if (!trimmed) {
       showNotice.error('nexthubx.activate.feedback.empty')
+      return
+    }
+
+    // 激活前强制门控:Clash Verge 运行中(TUN/代理活跃)或开机自启未关 → 阻断并展示指引,
+    // 待用户关闭后(点「重新检测」通过)才放行,避免激活请求被劫 + 后续 TUN 互相冲突。
+    if (!(await checkClashVergeGate())) {
       return
     }
 
@@ -407,6 +444,24 @@ export const AccountCard = () => {
           <Typography variant="body2" color="text.secondary">
             {t('nexthubx.activate.subtitle')}
           </Typography>
+          {cvBlock && (
+            <Alert
+              severity="warning"
+              icon={<WarningAmberRounded fontSize="inherit" />}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => void checkClashVergeGate()}
+                >
+                  {t('nexthubx.clashVergeConflict.recheck')}
+                </Button>
+              }
+              sx={{ whiteSpace: 'pre-line', alignItems: 'flex-start' }}
+            >
+              {`${t('nexthubx.clashVergeConflict.blockingActivate')}\n\n${t('nexthubx.clashVergeConflict.steps')}`}
+            </Alert>
+          )}
           <TextField
             fullWidth
             size="small"
@@ -425,7 +480,7 @@ export const AccountCard = () => {
             <Button
               variant="contained"
               onClick={() => void onActivate()}
-              disabled={submitting}
+              disabled={submitting || Boolean(cvBlock)}
             >
               {submitting
                 ? t('nexthubx.activate.submitting')

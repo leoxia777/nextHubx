@@ -259,8 +259,11 @@ export interface TranslationResources {
       brand: string
       clashVergeConflict: {
         appearedBody: string
+        blockingActivate: string
         confirm: string
+        recheck: string
         runningBody: string
+        steps: string
         title: string
       }
       connect: {
