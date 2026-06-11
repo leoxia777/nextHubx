@@ -14,8 +14,8 @@
     "submitting": "正在激活…",
     "reactivateTitle": "重新激活",
     "verify": {
-      "verifying": "正在验证连接与出口 IP…",
-      "mismatchHint": "当前出口 IP 与分配的出口不一致，账号信息将在连接验证通过前保持隐藏。请检查连接或联系技术支持。"
+      "verifying": "正在校验出口 IP…（TUN 切换后一般十几秒内完成）",
+      "mismatchHint": "出口 IP 校验中：当前检测到的出口尚未切换到分配的出口，属正常过渡。校验通过后将自动显示账号信息；若长时间（超过 1 分钟）未通过，请检查连接或联系技术支持。"
     },
     "feedback": {
       "success": "激活成功，正在进入主界面",
@@ -56,8 +56,8 @@
       "serviceUnavailable": "网络服务不可用，请重新安装"
     },
     "gate": {
-      "title": "需要安装网络服务",
-      "body": "NextHubX 需要安装一个后台网络服务以接管全局代理网卡。安装时系统会请求管理员权限(Windows 弹出 UAC / macOS 输入密码),整个过程仅需一次。未安装将无法使用。",
+      "title": "需要安装 TUN 网络服务",
+      "body": "NextHubX 需要安装一个后台网络服务以建立 TUN 虚拟网卡、接管全局流量。安装时系统会请求管理员权限(Windows 弹出 UAC / macOS 输入密码),整个过程仅需一次。未安装将无法使用。",
       "install": "授权并安装",
       "installing": "正在安装服务…",
       "retry": "重试安装",

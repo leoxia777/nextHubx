@@ -10,6 +10,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   IconButton,
   Skeleton,
   Typography,
@@ -123,6 +124,7 @@ export const IpInfoCard = () => {
     status: exitMatch,
     expectedExitIp,
     actualIp,
+    setupInProgress,
   } = useNexthubxExitGuard({ actualIp: ipInfo?.ip })
 
   // function useEffectEvent
@@ -331,6 +333,19 @@ export const IpInfoCard = () => {
               value={ipInfo?.asn ? `AS${ipInfo.asn}` : 'N/A'}
             />
 
+            {/* 初始验证(激活后 TUN 切换)期间且尚未匹配:显示持续「校验中」加载态,
+                不显示红色不一致(TUN 切换中 IP 短暂为旧出口属预期,十几秒内收敛)。 */}
+            {setupInProgress && exitMatch !== 'match' && (
+              <Chip
+                size="small"
+                color="info"
+                variant="outlined"
+                icon={<CircularProgress size={12} color="inherit" />}
+                label={t('home.components.ipInfo.exitCheck.checking')}
+                sx={{ mt: 0.5 }}
+              />
+            )}
+
             {exitMatch === 'match' && (
               <Chip
                 size="small"
@@ -342,7 +357,7 @@ export const IpInfoCard = () => {
               />
             )}
 
-            {exitMatch === 'mismatch' && (
+            {!setupInProgress && exitMatch === 'mismatch' && (
               <Alert
                 severity="error"
                 variant="outlined"

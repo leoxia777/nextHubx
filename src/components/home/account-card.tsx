@@ -308,6 +308,8 @@ export const AccountCard = () => {
         configFingerprint: prev?.configFingerprint,
         // 出口比对用:后端缺省时回退到上次值(老后端兼容)
         expectedExitIp: result.expectedExitIp ?? prev?.expectedExitIp,
+        // 账号使用说明:后端系统配置下发;缺省回退上次值(老后端兼容)
+        usageTips: result.tips ?? prev?.usageTips,
         // 激活码已过、配置已导入,但验证流程(service→TUN→IP)尚未走完。
         // 此时若 app 被关闭,重开时据此从验证流程续跑而非回到输码(见下方 resume effect)。
         setupComplete: false,
@@ -405,31 +407,20 @@ export const AccountCard = () => {
       )
     }
 
-    // connect / probe:验证中(账号信息暂不显示)
+    // connect / probe:验证中(账号信息暂不显示)。
+    // 始终保持「校验中」加载态;TUN 刚切换时 IP 检测短暂返回旧出口属预期(一般十几秒内收敛),
+    // 故 mismatch 仅以 info 提示附注,不再用红色警示吓用户(全屏警示也已在验证期被抑制)。
     const mismatch = exitStatus === 'mismatch'
     return (
       <Stack spacing={2} sx={{ alignItems: 'center', py: 2 }}>
-        {mismatch ? (
-          <Alert
-            severity="error"
-            variant="outlined"
-            icon={<WarningAmberRounded />}
-            sx={{ width: '100%' }}
-          >
-            <Typography variant="subtitle2">
-              {t('nexthubx.exitGuard.title')}
-            </Typography>
-            <Typography variant="body2">
-              {t('nexthubx.activate.verify.mismatchHint')}
-            </Typography>
+        <CircularProgress size={28} />
+        <Typography variant="body2" color="text.secondary">
+          {t('nexthubx.activate.verify.verifying')}
+        </Typography>
+        {mismatch && (
+          <Alert severity="info" variant="outlined" sx={{ width: '100%' }}>
+            {t('nexthubx.activate.verify.mismatchHint')}
           </Alert>
-        ) : (
-          <>
-            <CircularProgress size={28} />
-            <Typography variant="body2" color="text.secondary">
-              {t('nexthubx.activate.verify.verifying')}
-            </Typography>
-          </>
         )}
       </Stack>
     )
@@ -591,8 +582,14 @@ export const AccountCard = () => {
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('nexthubx.account.usage.title')}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t('nexthubx.account.usage.body')}
+            {/* 使用说明优先取后端「系统配置」下发的 tips(激活/sync 时存入 usageTips),
+                缺省(老后端/未配置)回退内置 i18n 文案。whiteSpace 保留运营配置的换行。 */}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ whiteSpace: 'pre-line' }}
+            >
+              {clientState?.usageTips?.trim() || t('nexthubx.account.usage.body')}
             </Typography>
           </Box>
         </Stack>

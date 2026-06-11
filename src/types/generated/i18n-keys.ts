@@ -74,6 +74,7 @@ export const translationKeys = [
   'home.components.ipInfo.labels.unknown',
   'home.components.ipInfo.errors.load',
   'home.components.ipInfo.exitCheck.match',
+  'home.components.ipInfo.exitCheck.checking',
   'home.components.ipInfo.exitCheck.mismatch',
   'home.components.currentProxy.title',
   'home.components.currentProxy.actions.refreshDelay',

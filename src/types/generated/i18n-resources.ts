@@ -82,6 +82,7 @@ export interface TranslationResources {
             load: string
           }
           exitCheck: {
+            checking: string
             match: string
             mismatch: string
           }

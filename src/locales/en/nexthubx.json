@@ -14,8 +14,8 @@
     "submitting": "Activating…",
     "reactivateTitle": "Reactivate",
     "verify": {
-      "verifying": "Verifying connection and exit IP…",
-      "mismatchHint": "The current exit IP does not match your assigned exit. Your account information stays hidden until the connection is verified. Please check your connection or contact support."
+      "verifying": "Verifying exit IP… (usually completes within ~15 seconds after TUN switches)",
+      "mismatchHint": "Exit IP check in progress: the detected exit has not switched to your assigned exit yet, which is normal during the transition. Your account will appear automatically once verified; if it takes longer than a minute, check your connection or contact support."
     },
     "feedback": {
       "success": "Activated successfully, entering main view",
@@ -56,8 +56,8 @@
       "serviceUnavailable": "Network service unavailable, please reinstall"
     },
     "gate": {
-      "title": "Network service required",
-      "body": "NextHubX needs to install a background network service to manage the global proxy adapter. The system will request administrator privileges (UAC on Windows / password on macOS). This is required only once; the app cannot be used until it is installed.",
+      "title": "TUN network service required",
+      "body": "NextHubX needs to install a background network service to create the TUN virtual adapter and take over global traffic. The system will request administrator privileges (UAC on Windows / password on macOS). This is required only once; the app cannot be used until it is installed.",
       "install": "Authorize and install",
       "installing": "Installing service…",
       "retry": "Retry install",

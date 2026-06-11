@@ -94,6 +94,8 @@ export const useNexthubxAutoSync = () => {
         profileUid,
         // 后端缺省时保留旧值(老后端/未分配),避免误清空导致比对失效
         expectedExitIp: data.expectedExitIp ?? state.expectedExitIp,
+        // 账号使用说明:后端系统配置下发;缺省保留旧值(老后端兼容)
+        usageTips: data.tips ?? state.usageTips,
         // 保留验证完成标志:同步不应把它清掉(否则会误触发重开后重跑验证)
         setupComplete: state.setupComplete,
       }
