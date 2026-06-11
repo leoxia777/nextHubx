@@ -92,7 +92,10 @@ export const AccountCard = () => {
     !reactivating &&
     !verifying &&
     Boolean(clientState) &&
-    exitStatus !== 'mismatch'
+    exitStatus !== 'mismatch' &&
+    // 验证流程未走完(setupComplete===false)时不展示账号,交由下方 resume effect 续跑验证。
+    // undefined(老状态)视为已完成,不打扰存量用户。
+    clientState?.setupComplete !== false
 
   const showForm = !isActivated || !clientState || (reactivating && !verifying)
 
@@ -168,6 +171,14 @@ export const AccountCard = () => {
   useEffect(() => {
     if (verifyPhase !== 'probe') return
     if (exitStatus === 'match') {
+      // 验证全流程完成 → 持久化 setupComplete,使重开 app 直接展示账号、不再重跑验证。
+      void (async () => {
+        const cur = await loadClientState()
+        if (cur && cur.setupComplete !== true) {
+          await saveClientState({ ...cur, setupComplete: true })
+          refresh()
+        }
+      })()
       setVerifyPhase(null)
       setReactivating(false)
       return
@@ -178,7 +189,7 @@ export const AccountCard = () => {
     // 立即先取一次
     void refetchIp()
     return () => clearInterval(timer)
-  }, [verifyPhase, exitStatus, refetchIp])
+  }, [verifyPhase, exitStatus, refetchIp, refresh])
 
   // 未激活守卫:从未激活 / token 被吊销(isActivated=false)且不处于激活验证流程(verifying)时,
   // 强制关闭 TUN —— 避免在「无有效订阅配置」下 TUN 仍接管全局流量(走默认/失效出口)。
@@ -193,6 +204,21 @@ export const AccountCard = () => {
       )
     }
   }, [isActivated, verifying, verge?.enable_tun_mode, enableTun])
+
+  // 续跑守卫(#2):激活码已校验、配置已导入,但验证流程未走完(setupComplete===false)时,
+  // 重开 app 自动从验证流程起点(service)续跑,而非回到激活码输入。
+  // service→TUN→出口 IP 三步均幂等,从头重跑安全;比持久化精确子步骤更稳(子步骤可能续进失效中间态)。
+  useEffect(() => {
+    if (
+      isActivated &&
+      clientState?.setupComplete === false &&
+      verifyPhase === null &&
+      !reactivating
+    ) {
+      setServiceFailures(0)
+      setVerifyPhase('service')
+    }
+  }, [isActivated, clientState?.setupComplete, verifyPhase, reactivating])
 
   const onActivate = useLockFn(async () => {
     const trimmed = token.trim()
@@ -228,6 +254,9 @@ export const AccountCard = () => {
         configFingerprint: prev?.configFingerprint,
         // 出口比对用:后端缺省时回退到上次值(老后端兼容)
         expectedExitIp: result.expectedExitIp ?? prev?.expectedExitIp,
+        // 激活码已过、配置已导入,但验证流程(service→TUN→IP)尚未走完。
+        // 此时若 app 被关闭,重开时据此从验证流程续跑而非回到输码(见下方 resume effect)。
+        setupComplete: false,
       })
 
       showNotice.success('nexthubx.activate.feedback.success')
