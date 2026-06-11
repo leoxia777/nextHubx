@@ -38,6 +38,7 @@ import {
   isServiceAvailable,
 } from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
+import { errInfo, nxDebug } from '@/services/nexthubx-debug'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
 import { loadClientState, saveClientState } from '@/services/nexthubx-store'
 import { showNotice } from '@/services/notice-service'
@@ -134,6 +135,7 @@ export const AccountCard = () => {
       detectOfficialClashVerge(),
       detectOfficialClashVergeAutostart(),
     ])
+    void nxDebug('gate.check', { cvRunning: running, cvAutostart: autostart })
     if (running || autostart) {
       setCvBlock({ running, autostart })
       return false
@@ -173,7 +175,10 @@ export const AccountCard = () => {
 
     // service 子阶段:就绪则进 connect
     if (verifyPhase === 'service') {
-      if (isServiceOk) setVerifyPhase('connect')
+      if (isServiceOk) {
+        void nxDebug('service.ready')
+        setVerifyPhase('connect')
+      }
       return
     }
 
@@ -184,8 +189,10 @@ export const AccountCard = () => {
       void (async () => {
         try {
           await enableTun(true)
+          void nxDebug('tun.enabled')
         } catch (err) {
           console.error('[nexthubx] enable tun failed', err)
+          void nxDebug('tun.fail', errInfo(err))
         }
         setVerifyPhase('probe')
       })()
@@ -196,6 +203,8 @@ export const AccountCard = () => {
   // probe 子阶段:持续轮询 IP,直到守卫给出 match → 完成激活;mismatch 交全局警示
   useEffect(() => {
     if (verifyPhase !== 'probe') return
+    // 仅记 exitStatus(它已是依赖);实际 IP 见 api.ts 的 ipcheck.ok、期望出口见 activate.ok。
+    void nxDebug('probe', { exitStatus })
     if (exitStatus === 'match') {
       // 验证全流程完成 → 持久化 setupComplete,使重开 app 直接展示账号、不再重跑验证。
       void (async () => {
@@ -265,8 +274,14 @@ export const AccountCard = () => {
     }
 
     setSubmitting(true)
+    void nxDebug('activate.start')
     try {
       const result = await activate(trimmed)
+      void nxDebug('activate.ok', {
+        email: result.identityEmail,
+        expectedExitIp: result.expectedExitIp,
+        cfgLen: result.proxyConfig?.content?.length,
+      })
 
       // 复用已有托管 profile uid(若之前激活过)以更新而非堆积
       const prev = await loadClientState()
@@ -276,8 +291,10 @@ export const AccountCard = () => {
           result.proxyConfig.content,
           prev?.profileUid,
         )
+        void nxDebug('importProfile.ok', { profileUid })
       } catch (err) {
         console.error('[nexthubx] import profile failed', err)
+        void nxDebug('importProfile.fail', errInfo(err))
         showNotice.error('nexthubx.activate.feedback.configError')
         return
       }
@@ -309,12 +326,15 @@ export const AccountCard = () => {
         console.error('[nexthubx] service readiness check failed', svcErr)
       }
       await mutateSystemState()
+      void nxDebug('verify.start', { serviceReady })
       setVerifyPhase(serviceReady ? 'connect' : 'service')
     } catch (err) {
       if (err instanceof ActivationInvalidError) {
+        void nxDebug('activate.fail.invalid', errInfo(err))
         showNotice.error('nexthubx.activate.feedback.invalid')
       } else {
         console.error('[nexthubx] activate failed', err)
+        void nxDebug('activate.fail.network', errInfo(err))
         showNotice.error('nexthubx.activate.feedback.networkError')
       }
     } finally {
