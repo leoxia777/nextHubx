@@ -67,6 +67,13 @@ pub fn detect_official_clash_verge_autostart() -> Result<bool, Error> {
     Ok(crate::detect_official_clash_verge_autostart())
 }
 
+/// 一键关停官方 Clash Verge(GUI + 其 root 核心)。core 是 root 进程,macOS 会弹一次系统密码。
+/// 成功并确认关停 → Ok;用户取消密码 → Err("CANCELLED");杀后仍在 → Err("STILL_RUNNING")。
+#[command]
+pub fn stop_official_clash_verge() -> Result<(), String> {
+    crate::stop_official_clash_verge()
+}
+
 #[command]
 pub fn export_diagnostic_info<R: Runtime>(
     app_handle: AppHandle<R>,

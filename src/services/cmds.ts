@@ -611,3 +611,13 @@ export const detectOfficialClashVergeAutostart = async () => {
     return false
   }
 }
+
+/**
+ * 一键关停官方 Clash Verge(GUI + 其 root 核心)。
+ * CV 核心是 root 进程(TUN 需 root),macOS 会弹一次系统管理员密码。
+ * 成功并确认关停 → resolve;失败/取消会 throw(错误信息为后端码:
+ * 'CANCELLED' 用户取消密码、'STILL_RUNNING' 杀后仍在),由调用方据此提示。
+ */
+export const stopOfficialClashVerge = async () => {
+  return await invoke<void>('stop_official_clash_verge')
+}
