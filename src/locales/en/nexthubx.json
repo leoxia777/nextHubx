@@ -91,7 +91,7 @@
   },
   "sync": {
     "configUpdated": "Proxy configuration updated",
-    "revokedNotice": "Your seat has been revoked, please reactivate",
+    "revokedNotice": "This device has been reset or your seat is no longer valid. Please reactivate with your activation code.",
     "failed": "Sync failed, will retry later"
   },
   "exitGuard": {

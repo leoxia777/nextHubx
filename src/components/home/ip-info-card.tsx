@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useIpInfoQuery } from '@/hooks/use-ip-info'
 import { useNexthubxExitGuard } from '@/hooks/use-nexthubx-exit-guard'
+import { requestImmediateNexthubxSync } from '@/hooks/use-nexthubx-sync'
 
 import { EnhancedCard } from './enhanced-card'
 
@@ -126,6 +127,14 @@ export const IpInfoCard = () => {
     actualIp,
     setupInProgress,
   } = useNexthubxExitGuard({ actualIp: ipInfo?.ip })
+
+  // IP 检测失败 → 很可能代理已被切断(含设备/订阅被重置导致)。立即请求一次直连同步,
+  // 尽早拿到 401/revoked 感知重置并提示重激活,而非让用户干瞪「IP 检测失败」等下次心跳。
+  // (去抖在 requestImmediateNexthubxSync 内;runSync 仅对确定的 401/revoked 动作,网络错误是 no-op,
+  //  故对真·网络故障无副作用。)
+  useEffect(() => {
+    if (error) requestImmediateNexthubxSync()
+  }, [error])
 
   // function useEffectEvent
   const onCountdownTick = useEffectEvent(async () => {
