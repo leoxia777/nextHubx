@@ -8,6 +8,7 @@
         "connections": "接続",
         "rules": "ルール",
         "logs": "ログ",
+        "test": "Test",
         "unlock": "テスト",
         "settings": "設定"
       },
@@ -17,7 +18,9 @@
         "unlock": "Unlock menu order",
         "lock": "Lock menu order",
         "collapseNavBar": "Collapse navigation bar",
-        "expandNavBar": "Expand navigation bar"
+        "expandNavBar": "Expand navigation bar",
+        "showAdvanced": "Show advanced/debug pages",
+        "hideAdvanced": "Hide advanced/debug pages"
       }
     }
   }

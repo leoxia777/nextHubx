@@ -30,6 +30,10 @@ export interface NexthubxClientState {
   expectedExitIp?: string
   /** 账号使用说明(后端「系统配置」下发,激活/sync 时更新);缺省时账号卡片回退内置文案。 */
   usageTips?: string
+  /** team 绑定状态(none / invite_sent / bound),sync 下发;客户端据此显示 待绑定/已发送邀请/已绑定。 */
+  bindStatus?: string
+  /** 是否自助绑定席位(sync 下发);仅自助席位展示绑定状态 UI,平台分配席位不展示。 */
+  isSelfBind?: boolean
   /**
    * 激活后的「连接验证」是否已走完(service 就绪 + TUN 开启 + 出口 IP 一致)。
    * - `false`:激活码已校验通过、配置已导入,但中途某步未完成 → 重开 app 应**从验证流程续跑**,
@@ -80,11 +84,17 @@ export interface NexthubxResetNotice {
  * 故用写入「抹除」凭证内容(load 时无 clientToken 即视为未激活),不物理删文件。
  * 传入 resetNotice 时保留它(供激活界面常驻提示 + 邮箱预填),其余凭证/账号一律清掉。
  */
-export async function clearClientState(resetNotice?: NexthubxResetNotice): Promise<void> {
+export async function clearClientState(
+  resetNotice?: NexthubxResetNotice,
+): Promise<void> {
   try {
-    await writeTextFile(STORE_FILE, JSON.stringify(resetNotice ? { resetNotice } : {}), {
-      baseDir: STORE_BASE_DIR,
-    })
+    await writeTextFile(
+      STORE_FILE,
+      JSON.stringify(resetNotice ? { resetNotice } : {}),
+      {
+        baseDir: STORE_BASE_DIR,
+      },
+    )
   } catch (err) {
     console.error('[nexthubx-store] clear failed', err)
   }

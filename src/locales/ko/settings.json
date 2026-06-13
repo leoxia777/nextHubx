@@ -15,11 +15,15 @@
         "systemProxy": "시스템 프록시"
       },
       "tooltips": {
-        "silentStart": "패널을 표시하지 않고 백그라운드에서 시작합니다"
+        "silentStart": "패널을 표시하지 않고 백그라운드에서 시작합니다",
+        "locked": "Managed by the system service and kept enabled."
       },
       "fields": {
         "autoLaunch": "자동 실행",
-        "silentStart": "백그라운드 시작"
+        "silentStart": "백그라운드 시작",
+        "dnsOverride": "DNS Override",
+        "unifiedDelay": "Unified Delay",
+        "allowLan": "Allow LAN"
       },
       "notifications": {
         "tunMode": {
@@ -169,7 +173,12 @@
           "themeSetting": "테마 설정",
           "layoutSetting": "레이아웃 설정",
           "misc": "기타",
-          "hotkeySetting": "단축키 설정"
+          "hotkeySetting": "단축키 설정",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "showInMenuBar": "Show in Menu Bar",
+          "exportDiagnostics": "Export Diagnostic Info",
+          "version": "Version"
         }
       },
       "advanced": {

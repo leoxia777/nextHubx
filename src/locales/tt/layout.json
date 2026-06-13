@@ -8,6 +8,7 @@
         "connections": "Тоташулар",
         "rules": "Кагыйдәләр",
         "logs": "Логлар",
+        "test": "Test",
         "unlock": "Test",
         "settings": "Көйләүләр"
       },
@@ -17,7 +18,9 @@
         "unlock": "Unlock menu order",
         "lock": "Lock menu order",
         "collapseNavBar": "Collapse navigation bar",
-        "expandNavBar": "Expand navigation bar"
+        "expandNavBar": "Expand navigation bar",
+        "showAdvanced": "Show advanced/debug pages",
+        "hideAdvanced": "Hide advanced/debug pages"
       }
     }
   }

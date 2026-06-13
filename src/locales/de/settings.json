@@ -15,11 +15,15 @@
         "systemProxy": "Systemproxy"
       },
       "tooltips": {
-        "silentStart": "Die Anwendung wird im Hintergrund gestartet, ohne dass das Programmfenster angezeigt wird."
+        "silentStart": "Die Anwendung wird im Hintergrund gestartet, ohne dass das Programmfenster angezeigt wird.",
+        "locked": "Managed by the system service and kept enabled."
       },
       "fields": {
         "autoLaunch": "Automatischer Start",
-        "silentStart": "Leiser Start"
+        "silentStart": "Leiser Start",
+        "dnsOverride": "DNS Override",
+        "unifiedDelay": "Unified Delay",
+        "allowLan": "Allow LAN"
       },
       "notifications": {
         "tunMode": {
@@ -169,7 +173,12 @@
           "themeSetting": "Thema-Einstellungen",
           "layoutSetting": "Layout-Einstellungen",
           "misc": "Sonstige Einstellungen",
-          "hotkeySetting": "Tastenkombinationseinstellungen"
+          "hotkeySetting": "Tastenkombinationseinstellungen",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "showInMenuBar": "Show in Menu Bar",
+          "exportDiagnostics": "Export Diagnostic Info",
+          "version": "Version"
         }
       },
       "advanced": {

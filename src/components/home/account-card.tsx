@@ -1,7 +1,10 @@
 /* eslint-disable @eslint-react/set-state-in-effect */
 import {
   AccountCircleOutlined,
+  CheckCircleRounded,
   ContentCopyRounded,
+  HourglassTopRounded,
+  MarkEmailReadRounded,
   RefreshRounded,
   ShieldRounded,
   SupportAgentRounded,
@@ -28,7 +31,10 @@ import { useTranslation } from 'react-i18next'
 
 import { useIpInfoQuery } from '@/hooks/use-ip-info'
 import { useNexthubxExitGuard } from '@/hooks/use-nexthubx-exit-guard'
-import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
+import {
+  requestImmediateNexthubxSync,
+  useNexthubxClient,
+} from '@/hooks/use-nexthubx-sync'
 import { useServiceInstaller } from '@/hooks/use-service-installer'
 import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
@@ -38,7 +44,11 @@ import {
   isServiceAvailable,
   stopOfficialClashVerge,
 } from '@/services/cmds'
-import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
+import {
+  ActivationInvalidError,
+  activate,
+  confirmBind,
+} from '@/services/nexthubx-api'
 import { errInfo, nxDebug } from '@/services/nexthubx-debug'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
 import {
@@ -81,10 +91,14 @@ export const AccountCard = () => {
   const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
   // 「被重置」通知:席位被管理员重置/作废后常驻提示(含账号邮箱)+ 预填邮箱框。
-  const [resetNotice, setResetNotice] = useState<NexthubxResetNotice | null>(null)
+  const [resetNotice, setResetNotice] = useState<NexthubxResetNotice | null>(
+    null,
+  )
   const [submitting, setSubmitting] = useState(false)
   const [reactivating, setReactivating] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  // 自助绑定:用户点「确认已绑定」时的提交态。
+  const [confirmingBind, setConfirmingBind] = useState(false)
 
   // 分步激活态:null = 未在验证;否则处于「验证中」的某个子阶段
   const [verifyPhase, setVerifyPhase] = useState<VerifyPhase | null>(null)
@@ -124,6 +138,33 @@ export const AccountCard = () => {
       showNotice.success('nexthubx.account.copied')
     } catch (err) {
       console.error('[nexthubx] copy failed', err)
+    }
+  })
+
+  // 自助绑定末步:用户在客户端自报「已绑定」。乐观更新本地 bindStatus=bound + 触发权威同步回填。
+  // 仅 invite_sent 才会渲染此按钮;后端再校验(非 invite_sent → 409 提示)。
+  const onConfirmBound = useLockFn(async () => {
+    if (!clientState?.clientToken) return
+    setConfirmingBind(true)
+    try {
+      const res = await confirmBind(clientState.clientToken)
+      if (res.status === 'ok') {
+        const cur = await loadClientState()
+        if (cur) await saveClientState({ ...cur, bindStatus: 'bound' })
+        refresh()
+        requestImmediateNexthubxSync()
+        showNotice.success('nexthubx.account.bind.confirmOk')
+      } else if (res.status === 'conflict') {
+        showNotice.error('nexthubx.account.bind.notInvited')
+      } else {
+        // unauthorized:凭证/设备失效,下次 sync 会走重置流程
+        showNotice.error('nexthubx.account.bind.confirmFail')
+      }
+    } catch (err) {
+      console.error('[nexthubx] confirm-bind failed', err)
+      showNotice.error('nexthubx.account.bind.confirmFail')
+    } finally {
+      setConfirmingBind(false)
     }
   })
 
@@ -514,7 +555,9 @@ export const AccountCard = () => {
               sx={{ alignItems: 'flex-start' }}
             >
               {resetNotice.email
-                ? t('nexthubx.activate.resetNoticeWithEmail', { email: resetNotice.email })
+                ? t('nexthubx.activate.resetNoticeWithEmail', {
+                    email: resetNotice.email,
+                  })
                 : t('nexthubx.activate.resetNotice')}
             </Alert>
           )}
@@ -529,7 +572,9 @@ export const AccountCard = () => {
                   variant="outlined"
                   disabled={stoppingCv}
                   startIcon={
-                    stoppingCv ? <CircularProgress size={14} color="inherit" /> : undefined
+                    stoppingCv ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : undefined
                   }
                   onClick={() => void onForceStopCv()}
                 >
@@ -658,6 +703,72 @@ export const AccountCard = () => {
             }}
           />
 
+          {/* 自助绑定状态(仅自助席位 isSelfBind 展示;平台分配席位由运营代绑,不显示)。
+              email/password 即上方展示的 cloud-identity 账号密码——用户用它去 Claude 接受邀请。 */}
+          {clientState.isSelfBind && clientState.bindStatus === 'none' && (
+            <Alert
+              severity="info"
+              variant="outlined"
+              icon={<HourglassTopRounded fontSize="inherit" />}
+              sx={{ alignItems: 'flex-start' }}
+            >
+              <Typography variant="subtitle2">
+                {t('nexthubx.account.bind.pendingTitle')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t('nexthubx.account.bind.pendingBody')}
+              </Typography>
+            </Alert>
+          )}
+
+          {clientState.isSelfBind &&
+            clientState.bindStatus === 'invite_sent' && (
+              <Alert
+                severity="success"
+                variant="outlined"
+                icon={<MarkEmailReadRounded fontSize="inherit" />}
+                sx={{ alignItems: 'flex-start' }}
+              >
+                <Typography variant="subtitle2">
+                  {t('nexthubx.account.bind.invitedTitle')}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1, whiteSpace: 'pre-line' }}
+                >
+                  {t('nexthubx.account.bind.invitedBody')}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={confirmingBind}
+                  startIcon={
+                    confirmingBind ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : (
+                      <CheckCircleRounded />
+                    )
+                  }
+                  onClick={() => void onConfirmBound()}
+                >
+                  {confirmingBind
+                    ? t('nexthubx.account.bind.confirming')
+                    : t('nexthubx.account.bind.confirmButton')}
+                </Button>
+              </Alert>
+            )}
+
+          {clientState.isSelfBind && clientState.bindStatus === 'bound' && (
+            <Alert
+              severity="success"
+              variant="outlined"
+              icon={<CheckCircleRounded fontSize="inherit" />}
+            >
+              {t('nexthubx.account.bind.boundLabel')}
+            </Alert>
+          )}
+
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('nexthubx.account.usage.title')}
@@ -669,7 +780,8 @@ export const AccountCard = () => {
               color="text.secondary"
               sx={{ whiteSpace: 'pre-line' }}
             >
-              {clientState?.usageTips?.trim() || t('nexthubx.account.usage.body')}
+              {clientState?.usageTips?.trim() ||
+                t('nexthubx.account.usage.body')}
             </Typography>
           </Box>
         </Stack>

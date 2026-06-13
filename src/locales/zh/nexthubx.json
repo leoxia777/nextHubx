@@ -85,6 +85,18 @@
       "title": "如何使用该账号",
       "body": "请使用上方的账号(邮箱 + 密码)登录claude.ai，登录方式采用 'Continue with Google' 按钮登录"
     },
+    "bind": {
+      "pendingTitle": "待绑定 team 账号",
+      "pendingBody": "已激活,正在等待管理员发送团队绑定邀请,请稍候。",
+      "invitedTitle": "绑定邀请已发送",
+      "invitedBody": "请到你的个人邮箱(含垃圾箱)查收团队邀请邮件,用上方的账号 + 密码登录 Claude 接受邀请。完成后点下方「确认已绑定」。",
+      "confirmButton": "确认已绑定",
+      "confirming": "提交中…",
+      "confirmOk": "已确认绑定",
+      "notInvited": "邀请尚未发送,请稍后再试或联系管理员。",
+      "confirmFail": "确认失败,请稍后重试。",
+      "boundLabel": "已绑定 team 账号"
+    },
     "syncStatus": {
       "label": "同步状态",
       "active": "正常",

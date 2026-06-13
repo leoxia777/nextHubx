@@ -15,11 +15,15 @@
         "systemProxy": "系統代理"
       },
       "tooltips": {
-        "silentStart": "程序啟動時以後台模式執行，不顯示程序面板"
+        "silentStart": "程序啟動時以後台模式執行，不顯示程序面板",
+        "locked": "Managed by the system service and kept enabled."
       },
       "fields": {
         "autoLaunch": "開機自啟",
-        "silentStart": "靜默啟動"
+        "silentStart": "靜默啟動",
+        "dnsOverride": "DNS Override",
+        "unifiedDelay": "Unified Delay",
+        "allowLan": "Allow LAN"
       },
       "notifications": {
         "tunMode": {
@@ -169,7 +173,12 @@
           "themeSetting": "主題設定",
           "layoutSetting": "介面設定",
           "misc": "雜項設定",
-          "hotkeySetting": "快速鍵設定"
+          "hotkeySetting": "快速鍵設定",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "showInMenuBar": "Show in Menu Bar",
+          "exportDiagnostics": "Export Diagnostic Info",
+          "version": "Version"
         }
       },
       "advanced": {

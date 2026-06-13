@@ -15,11 +15,15 @@
         "systemProxy": "Proxy del sistema"
       },
       "tooltips": {
-        "silentStart": "El programa se ejecutará en segundo plano al iniciarse y no mostrará el panel."
+        "silentStart": "El programa se ejecutará en segundo plano al iniciarse y no mostrará el panel.",
+        "locked": "Managed by the system service and kept enabled."
       },
       "fields": {
         "autoLaunch": "Inicio automático",
-        "silentStart": "Inicio silencioso"
+        "silentStart": "Inicio silencioso",
+        "dnsOverride": "DNS Override",
+        "unifiedDelay": "Unified Delay",
+        "allowLan": "Allow LAN"
       },
       "notifications": {
         "tunMode": {
@@ -169,7 +173,12 @@
           "themeSetting": "Configuración de tema",
           "layoutSetting": "Configuración de la interfaz",
           "misc": "Ajustes varios",
-          "hotkeySetting": "Configuración de atajos de teclado"
+          "hotkeySetting": "Configuración de atajos de teclado",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "showInMenuBar": "Show in Menu Bar",
+          "exportDiagnostics": "Export Diagnostic Info",
+          "version": "Version"
         }
       },
       "advanced": {

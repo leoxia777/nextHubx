@@ -15,11 +15,15 @@
         "systemProxy": "وكيل النظام"
       },
       "tooltips": {
-        "silentStart": "بدء البرنامج في الخلفية دون عرض الواجهة"
+        "silentStart": "بدء البرنامج في الخلفية دون عرض الواجهة",
+        "locked": "Managed by the system service and kept enabled."
       },
       "fields": {
         "autoLaunch": "تشغيل تلقائي",
-        "silentStart": "تشغيل صامت"
+        "silentStart": "تشغيل صامت",
+        "dnsOverride": "DNS Override",
+        "unifiedDelay": "Unified Delay",
+        "allowLan": "Allow LAN"
       },
       "notifications": {
         "tunMode": {
@@ -169,7 +173,12 @@
           "themeSetting": "إعدادات السمة",
           "layoutSetting": "إعدادات التخطيط",
           "misc": "متفرقات",
-          "hotkeySetting": "إعدادات الاختصارات"
+          "hotkeySetting": "إعدادات الاختصارات",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "showInMenuBar": "Show in Menu Bar",
+          "exportDiagnostics": "Export Diagnostic Info",
+          "version": "Version"
         }
       },
       "advanced": {
