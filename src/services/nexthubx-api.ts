@@ -6,7 +6,12 @@
  * **不要改用 webview 原生 fetch**。参考 `src/services/api.ts`(CVR 下载/IP 检测同样用此 plugin fetch)。
  */
 import { getName, getVersion } from '@tauri-apps/api/app'
-import { BaseDirectory, exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import {
+  BaseDirectory,
+  exists,
+  readTextFile,
+  writeTextFile,
+} from '@tauri-apps/plugin-fs'
 import { fetch } from '@tauri-apps/plugin-http'
 
 /**
@@ -92,6 +97,10 @@ export interface SyncActiveResult {
   expectedExitIp?: string
   /** 账号使用说明(运营在后台「系统配置」维护,随 sync 下发)。缺省时客户端回退内置文案。 */
   tips?: string | null
+  /** team 绑定状态(none / invite_sent / bound);自助绑定流程据此显示状态。可能缺省(老后端)。 */
+  bindStatus?: string
+  /** 是否自助绑定席位;仅自助席位展示绑定状态 UI。可能缺省(老后端,视为非自助)。 */
+  isSelfBind?: boolean
 }
 
 export type SyncResult =
@@ -123,7 +132,10 @@ async function buildUserAgent(): Promise<string> {
  * - 409 → 抛 ActivationInvalidError(邮箱或激活码不正确/已失效,后端不区分以防枚举)
  * - 其他非 2xx → 抛 Error
  */
-export async function activate(email: string, token: string): Promise<ActivateResult> {
+export async function activate(
+  email: string,
+  token: string,
+): Promise<ActivateResult> {
   const userAgent = await buildUserAgent()
   const response = await fetch(`${NEXTHUBX_API_BASE}/api/activate`, {
     method: 'POST',
@@ -132,7 +144,11 @@ export async function activate(email: string, token: string): Promise<ActivateRe
       'Content-Type': 'application/json',
       'User-Agent': userAgent,
     },
-    body: JSON.stringify({ email: email.trim(), token, deviceId: await ensureDeviceId() }),
+    body: JSON.stringify({
+      email: email.trim(),
+      token,
+      deviceId: await ensureDeviceId(),
+    }),
   })
 
   if (response.status === 409) {
@@ -195,4 +211,39 @@ export async function syncClient(
     return { status: 'revoked' }
   }
   return { status: 'active', data: data as SyncActiveResult }
+}
+
+export type ConfirmBindResult =
+  | { status: 'ok' }
+  | { status: 'unauthorized' }
+  /** 邀请尚未发送 / 席位作废等(409):客户端提示稍后再试或联系管理员。 */
+  | { status: 'conflict' }
+
+/**
+ * 自助绑定末步:用户在客户端自报「已绑定」。POST /api/client/confirm-bind
+ *   Authorization: Bearer <clientToken> + X-Device-Id(鉴权同 sync)
+ * - 200 → { status:'ok' }(后端 teamBindStatus→bound)
+ * - 401 → { status:'unauthorized' }
+ * - 409 → { status:'conflict' }(邀请未发送 / 席位作废)
+ * 注:与后台运营确认双通道,用户自报后下一次 sync 会回填 bound(指纹含 teamBindStatus)。
+ */
+export async function confirmBind(
+  clientToken: string,
+): Promise<ConfirmBindResult> {
+  const userAgent = await buildUserAgent()
+  const response = await fetch(`${NEXTHUBX_API_BASE}/api/client/confirm-bind`, {
+    method: 'POST',
+    connectTimeout: REQUEST_TIMEOUT_MS,
+    headers: {
+      Authorization: `Bearer ${clientToken}`,
+      'User-Agent': userAgent,
+      'X-Device-Id': await ensureDeviceId(),
+    },
+  })
+  if (response.status === 401) return { status: 'unauthorized' }
+  if (response.status === 409) return { status: 'conflict' }
+  if (!response.ok) {
+    throw new Error(`Confirm-bind failed with status ${response.status}`)
+  }
+  return { status: 'ok' }
 }

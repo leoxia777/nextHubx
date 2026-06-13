@@ -8,6 +8,7 @@
         "connections": "Соединения",
         "rules": "Правила",
         "logs": "Логи",
+        "test": "Test",
         "unlock": "Тест",
         "settings": "Настройки"
       },
@@ -17,7 +18,9 @@
         "unlock": "Разблокировать порядок меню",
         "lock": "Заблокировать порядок меню",
         "collapseNavBar": "Свернуть панель навигации",
-        "expandNavBar": "Развернуть панель навигации"
+        "expandNavBar": "Развернуть панель навигации",
+        "showAdvanced": "Show advanced/debug pages",
+        "hideAdvanced": "Hide advanced/debug pages"
       }
     }
   }

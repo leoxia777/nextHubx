@@ -83,6 +83,11 @@
       },
       "errors": {
         "load": "IP 정보를 가져오지 못했습니다"
+      },
+      "exitCheck": {
+        "match": "Exit matched",
+        "checking": "Verifying exit…",
+        "mismatch": "Current exit IP ({{actual}}) differs from your assigned exit ({{expected}}). The proxy may not be connected or traffic is leaving through the wrong exit. Please check your connection."
       }
     },
     "currentProxy": {

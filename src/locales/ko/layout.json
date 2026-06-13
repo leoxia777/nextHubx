@@ -8,6 +8,7 @@
         "connections": "연결",
         "rules": "규칙",
         "logs": "로그",
+        "test": "Test",
         "unlock": "테스트",
         "settings": "설정"
       },
@@ -17,7 +18,9 @@
         "unlock": "메뉴 순서 잠금 해제",
         "lock": "메뉴 순서 잠금",
         "collapseNavBar": "Collapse navigation bar",
-        "expandNavBar": "Expand navigation bar"
+        "expandNavBar": "Expand navigation bar",
+        "showAdvanced": "Show advanced/debug pages",
+        "hideAdvanced": "Hide advanced/debug pages"
       }
     }
   }

@@ -15,11 +15,15 @@
         "systemProxy": "Sistem Vekil'i"
       },
       "tooltips": {
-        "silentStart": "Programı paneli görüntülemeden arka plan modunda başlatır"
+        "silentStart": "Programı paneli görüntülemeden arka plan modunda başlatır",
+        "locked": "Managed by the system service and kept enabled."
       },
       "fields": {
         "autoLaunch": "Otomatik Başlat",
-        "silentStart": "Sessiz Başlatma"
+        "silentStart": "Sessiz Başlatma",
+        "dnsOverride": "DNS Override",
+        "unifiedDelay": "Unified Delay",
+        "allowLan": "Allow LAN"
       },
       "notifications": {
         "tunMode": {
@@ -169,7 +173,12 @@
           "themeSetting": "Tema Ayarı",
           "layoutSetting": "Düzen Ayarı",
           "misc": "Çeşitli",
-          "hotkeySetting": "Kısayol Tuşu Ayarı"
+          "hotkeySetting": "Kısayol Tuşu Ayarı",
+          "openLogsDir": "Open Logs Dir",
+          "checkUpdates": "Check for Updates",
+          "showInMenuBar": "Show in Menu Bar",
+          "exportDiagnostics": "Export Diagnostic Info",
+          "version": "Version"
         }
       },
       "advanced": {

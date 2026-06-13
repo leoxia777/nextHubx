@@ -215,6 +215,18 @@ export interface TranslationResources {
     }
     nexthubx: {
       account: {
+        bind: {
+          boundLabel: string
+          confirmButton: string
+          confirmFail: string
+          confirming: string
+          confirmOk: string
+          invitedBody: string
+          invitedTitle: string
+          notInvited: string
+          pendingBody: string
+          pendingTitle: string
+        }
         copied: string
         copy: string
         email: string

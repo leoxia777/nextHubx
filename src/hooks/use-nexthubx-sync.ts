@@ -74,7 +74,10 @@ export const useNexthubxAutoSync = () => {
       const state = await loadClientState()
       if (!state?.clientToken) return
 
-      const result = await syncClient(state.clientToken, state.configFingerprint)
+      const result = await syncClient(
+        state.clientToken,
+        state.configFingerprint,
+      )
 
       if (result.status === 'not-modified') {
         return
@@ -116,6 +119,9 @@ export const useNexthubxAutoSync = () => {
         expectedExitIp: data.expectedExitIp ?? state.expectedExitIp,
         // 账号使用说明:后端系统配置下发;缺省保留旧值(老后端兼容)
         usageTips: data.tips ?? state.usageTips,
+        // team 绑定状态 + 是否自助席位:缺省(老后端)保留旧值,避免误清空绑定 UI 依赖
+        bindStatus: data.bindStatus ?? state.bindStatus,
+        isSelfBind: data.isSelfBind ?? state.isSelfBind,
         // 保留验证完成标志:同步不应把它清掉(否则会误触发重开后重跑验证)
         setupComplete: state.setupComplete,
       }

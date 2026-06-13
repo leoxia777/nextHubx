@@ -8,6 +8,7 @@
         "connections": "Conexiones",
         "rules": "Normas",
         "logs": "Registros",
+        "test": "Test",
         "unlock": "Descubrir",
         "settings": "Ajustes"
       },
@@ -17,7 +18,9 @@
         "unlock": "Unlock menu order",
         "lock": "Lock menu order",
         "collapseNavBar": "Collapse navigation bar",
-        "expandNavBar": "Expand navigation bar"
+        "expandNavBar": "Expand navigation bar",
+        "showAdvanced": "Show advanced/debug pages",
+        "hideAdvanced": "Hide advanced/debug pages"
       }
     }
   }

@@ -8,6 +8,7 @@
         "connections": "Bağlantılar",
         "rules": "Kurallar",
         "logs": "Günlükler",
+        "test": "Test",
         "unlock": "Test",
         "settings": "Ayarlar"
       },
@@ -17,7 +18,9 @@
         "unlock": "Unlock menu order",
         "lock": "Lock menu order",
         "collapseNavBar": "Collapse navigation bar",
-        "expandNavBar": "Expand navigation bar"
+        "expandNavBar": "Expand navigation bar",
+        "showAdvanced": "Show advanced/debug pages",
+        "hideAdvanced": "Hide advanced/debug pages"
       }
     }
   }

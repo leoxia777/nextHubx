@@ -8,6 +8,7 @@
         "connections": "連 線",
         "rules": "規 則",
         "logs": "日 誌",
+        "test": "Test",
         "unlock": "解 鎖",
         "settings": "設 定"
       },
@@ -17,7 +18,9 @@
         "unlock": "解鎖選單排序",
         "lock": "鎖定選單排序",
         "collapseNavBar": "收起導覽列",
-        "expandNavBar": "展開導覽列"
+        "expandNavBar": "展開導覽列",
+        "showAdvanced": "Show advanced/debug pages",
+        "hideAdvanced": "Hide advanced/debug pages"
       }
     }
   }
