@@ -305,8 +305,11 @@ pub fn kill_stray_mihomo(config_marker: &str) -> usize {
 /// Err("STILL_RUNNING") = 杀后仍在(罕见,可能被服务拉起,需手动处理);Err(其它) = 执行失败。
 #[cfg(target_os = "macos")]
 pub fn stop_official_clash_verge() -> Result<(), String> {
-    // 一条提权 shell 同时杀 CV 核心 + GUI;`|| true` 容忍无匹配进程(pkill 无匹配返回 1)。
-    let sh = "/usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/verge-mihomo' || true; \
+    // 一条提权 shell:先停掉 CV 的 root 特权服务(否则**服务模式**下它会立刻把核心重新拉起,
+    // 单纯 pkill 核心永远赢不了 → 报 STILL_RUNNING),再杀残留核心 + GUI。
+    // `bootout` 把守护从 launchd 移除(本次启动内不再被 KeepAlive 复活);`|| true` 容忍未加载 / 无匹配进程。
+    let sh = "/bin/launchctl bootout system/io.github.clash-verge-rev.clash-verge-rev.service 2>/dev/null || true; \
+              /usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/verge-mihomo' || true; \
               /usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/clash-verge' || true";
     let script = format!("do shell script \"{sh}\" with administrator privileges");
     let output = std::process::Command::new("/usr/bin/osascript")

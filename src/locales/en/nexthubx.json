@@ -7,9 +7,9 @@
   },
   "activate": {
     "title": "Activate NextHubX",
-    "subtitle": "Enter your account email and activation code to activate",
-    "emailLabel": "Account email",
-    "emailPlaceholder": "Email provided by your administrator",
+    "subtitle": "Enter your personal email and activation code to activate",
+    "emailLabel": "Personal email",
+    "emailPlaceholder": "Enter your personal email",
     "tokenLabel": "Activation token",
     "tokenPlaceholder": "Enter activation token",
     "resetNotice": "This device has been reset or your seat is no longer valid. Please reactivate with your activation code.",
@@ -23,8 +23,8 @@
     },
     "feedback": {
       "success": "Activated successfully, entering main view",
-      "empty": "Please enter your account email and activation code",
-      "invalid": "Email or activation code is incorrect, or the code has already been used/expired. Double-check the account email and code from your administrator, then retry. If you activated on another device, contact your administrator to reset it.",
+      "empty": "Please enter your personal email and activation code",
+      "invalid": "Email or activation code is incorrect, or the code has already been used/expired. Double-check your personal email and the activation code, then retry. If you activated on another device, contact your administrator to reset it.",
       "networkError": "Network error, please try again later",
       "configError": "Failed to import proxy configuration",
       "unknown": "Activation failed, please try again later"
@@ -83,7 +83,7 @@
     "reactivate": "Reactivate",
     "usage": {
       "title": "How to use this account",
-      "body": "Use the Google account above (email + password) to sign in to the team services provisioned for you. Do not change the password, bind a personal phone number, or enable two-factor authentication, and do not use it for personal purposes. This account is for your work use only; contact your administrator if you run into sign-in issues."
+      "body": "Use the Google account above (email + password) to sign in to the third-party service (claude.ai) via the 'Continue with Google' button. Note: this sign-in account is different from the personal email you used to activate — the personal email is only for activating this app. Do not change the password, bind a personal phone number, or enable two-factor authentication, and do not use it for personal purposes. This account is for your work use only; contact your administrator if you run into sign-in issues."
     },
     "bind": {
       "pendingTitle": "Pending team binding",

@@ -7,9 +7,9 @@
   },
   "activate": {
     "title": "激活 NextHubX",
-    "subtitle": "输入账号邮箱和激活码激活您的账号",
-    "emailLabel": "账号邮箱",
-    "emailPlaceholder": "请输入管理员提供的账号邮箱",
+    "subtitle": "输入个人邮箱和激活码激活您的账号",
+    "emailLabel": "个人邮箱",
+    "emailPlaceholder": "请输入你的个人邮箱",
     "tokenLabel": "激活码",
     "tokenPlaceholder": "请输入激活码",
     "resetNotice": "此设备已被重置或席位已失效，请使用激活码重新激活。",
@@ -23,8 +23,8 @@
     },
     "feedback": {
       "success": "激活成功，正在进入主界面",
-      "empty": "请输入账号邮箱和激活码",
-      "invalid": "邮箱或激活码不正确、或激活码已被使用/失效。请核对管理员提供的账号邮箱与激活码后重试；如曾在其他设备激活过，请联系管理员重置。",
+      "empty": "请输入个人邮箱和激活码",
+      "invalid": "邮箱或激活码不正确、或激活码已被使用/失效。请核对你的个人邮箱与激活码后重试；如曾在其他设备激活过，请联系管理员重置。",
       "networkError": "网络错误，请稍后重试",
       "configError": "导入代理配置失败",
       "unknown": "激活失败，请稍后重试"
@@ -83,7 +83,7 @@
     "reactivate": "重新激活",
     "usage": {
       "title": "如何使用该账号",
-      "body": "请使用上方的账号(邮箱 + 密码)登录claude.ai，登录方式采用 'Continue with Google' 按钮登录"
+      "body": "请使用上方账号(邮箱 + 密码)登录第三方(claude.ai)，采用 'Continue with Google' 按钮登录。注意：此登录账号与你激活时填写的个人邮箱不同——个人邮箱只用于激活本应用。"
     },
     "bind": {
       "pendingTitle": "待绑定 team 账号",
