@@ -191,6 +191,8 @@ export const translationKeys = [
   'nexthubx.account.bind.notInvited',
   'nexthubx.account.bind.confirmFail',
   'nexthubx.account.bind.boundLabel',
+  'nexthubx.account.bind.refresh',
+  'nexthubx.account.bind.refreshing',
   'nexthubx.account.syncStatus.label',
   'nexthubx.account.syncStatus.active',
   'nexthubx.account.syncStatus.syncing',

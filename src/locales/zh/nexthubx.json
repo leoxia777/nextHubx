@@ -95,7 +95,9 @@
       "confirmOk": "已确认绑定",
       "notInvited": "邀请尚未发送,请稍后再试或联系管理员。",
       "confirmFail": "确认失败,请稍后重试。",
-      "boundLabel": "已绑定 team 账号"
+      "boundLabel": "已绑定 team 账号",
+      "refresh": "刷新状态",
+      "refreshing": "正在刷新绑定状态…"
     },
     "syncStatus": {
       "label": "同步状态",

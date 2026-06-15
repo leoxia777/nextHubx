@@ -226,6 +226,8 @@ export interface TranslationResources {
           notInvited: string
           pendingBody: string
           pendingTitle: string
+          refresh: string
+          refreshing: string
         }
         copied: string
         copy: string

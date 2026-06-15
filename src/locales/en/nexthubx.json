@@ -95,7 +95,9 @@
       "confirmOk": "Binding confirmed",
       "notInvited": "The invite hasn't been sent yet — try again later or contact your administrator.",
       "confirmFail": "Failed to confirm, please try again later.",
-      "boundLabel": "Team account bound"
+      "boundLabel": "Team account bound",
+      "refresh": "Refresh status",
+      "refreshing": "Refreshing bind status…"
     },
     "syncStatus": {
       "label": "Sync status",
