@@ -72,7 +72,11 @@ impl IClashTemp {
         map.insert("port".into(), network::ports::DEFAULT_HTTP.into());
         map.insert("log-level".into(), "info".into());
         map.insert("allow-lan".into(), false.into());
-        map.insert("ipv6".into(), true.into());
+        // 关闭 IPv6:本网关出口纯 IPv4(VLESS→IPv4 SNAT),订阅模板亦声明 ipv6:false。
+        // 此键在 runtime.rs 的 PATCH_CONFIG_INNER 中会强制覆盖订阅值,故必须设 false,
+        // 否则 Windows 下 wintun 只劫 IPv4、native IPv6 绕过 TUN 直出 → IP 探测取到本地
+        // IPv6 → 出口守卫误判 mismatch 弹全屏遮罩(macOS utun 会劫 IPv6 故不复现)。
+        map.insert("ipv6".into(), false.into());
         map.insert("mode".into(), "rule".into());
         map.insert(
             "external-controller".into(),

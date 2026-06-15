@@ -1,12 +1,9 @@
-import { WarningAmberRounded } from '@mui/icons-material'
 import {
-  Backdrop,
-  Box,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material'
-import { useEffect } from 'react'
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useIpInfoQuery } from '@/hooks/use-ip-info'
@@ -14,26 +11,29 @@ import { useNexthubxExitGuard } from '@/hooks/use-nexthubx-exit-guard'
 import { useNexthubxClient } from '@/hooks/use-nexthubx-sync'
 
 /**
- * 全局出口 IP 不一致警示(最终 spec §3)。
+ * 出口 IP 不一致后台监测(不渲染任何 UI)。
  *
  * 挂载于 _layout 顶层,与 IP Info 卡片共用同一 IP 查询缓存。职责:
- * - 持续监测(主动轮询,不依赖卡片是否在视口),命中 mismatch → **全窗口醒目遮罩**盖住主内容;
- * - 后台 / 最小化下的系统通知 + 唤起主窗口由 `useNexthubxExitGuard` 负责。
+ * - 持续主动轮询实际出口 IP(不依赖卡片是否在视口),保证最小化 / 后台也能尽快发现不一致;
+ * - 持续不一致达阈值(prolonged)→ 发**被动系统通知**,提醒用户回来查看。
  *
- * 防误报 5 条件全部在 `useNexthubxExitGuard` 内实现,这里仅消费其 status。
+ * 注:**不再**渲染全屏遮罩、**不再**强制唤起 / 置顶窗口(spec 已改为:账号卡先隐藏账号 +
+ * 账号卡 / IP 卡内联提示,持续过久才升级「联系技术支持」)。通知放在此处单点发出,避免
+ * `useNexthubxExitGuard` 被多卡片调用时重复通知。比对与防误报逻辑见该 hook。
  */
 /** 后台监测轮询间隔(ms):比卡片倒计时更短,保证最小化时也能尽快发现。 */
 const GUARD_POLL_MS = 60_000
+
+const normIp = (ip: string | undefined): string =>
+  (ip ?? '').trim().toLowerCase()
 
 export const ExitMismatchGuard = () => {
   const { t } = useTranslation()
   const { isActivated } = useNexthubxClient()
   const { data: ipInfo, refetch } = useIpInfoQuery()
 
-  const { status, expectedExitIp, actualIp, setupInProgress } =
-    useNexthubxExitGuard({
-      actualIp: ipInfo?.ip,
-    })
+  const { status, expectedExitIp, actualIp, setupInProgress, prolonged } =
+    useNexthubxExitGuard({ actualIp: ipInfo?.ip })
 
   // 主动轮询:即使 IP 卡片未挂载 / 不在视口,也持续刷新实际 IP 以便后台检测。
   useEffect(() => {
@@ -44,44 +44,39 @@ export const ExitMismatchGuard = () => {
     return () => clearInterval(timer)
   }, [isActivated, refetch])
 
-  // 初始验证(激活后 TUN 切换)期间的 mismatch 大概率是瞬态(IP 检测尚未走新出口),
-  // 不弹全屏警示——账号卡片/IP 卡片此时呈现「校验中」(UX:不吓用户)。
-  if (status !== 'mismatch' || setupInProgress) return null
+  // 被动系统通知:持续不一致(prolonged)且非初始验证期才发;同一 (expected, actual)
+  // 组合只通知一次,恢复一致后才允许再次通知。**不**唤起 / 置顶窗口(被动,不打扰)。
+  const lastNotifiedRef = useRef<string>('')
+  useEffect(() => {
+    if (status === 'match') lastNotifiedRef.current = ''
+    if (status !== 'mismatch' || setupInProgress || !prolonged) return
 
-  return (
-    <Backdrop
-      open
-      sx={{
-        zIndex: (theme) => theme.zIndex.modal + 10,
-        bgcolor: 'rgba(0,0,0,0.72)',
-        p: 2,
-      }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          maxWidth: 440,
-          width: '100%',
-          p: 3,
-          borderTop: 4,
-          borderColor: 'error.main',
-        }}
-      >
-        <Stack spacing={2}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <WarningAmberRounded color="error" sx={{ fontSize: 32 }} />
-            <Typography variant="h6" color="error">
-              {t('nexthubx.exitGuard.title')}
-            </Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            {t('nexthubx.exitGuard.body', {
-              actual: actualIp ?? '',
-              expected: expectedExitIp ?? '',
-            })}
-          </Typography>
-        </Stack>
-      </Paper>
-    </Backdrop>
-  )
+    const key = `${normIp(expectedExitIp)}=>${normIp(actualIp)}`
+    if (lastNotifiedRef.current === key) return
+    lastNotifiedRef.current = key
+
+    void (async () => {
+      try {
+        let granted = await isPermissionGranted()
+        if (!granted) {
+          const perm = await requestPermission()
+          granted = perm === 'granted'
+        }
+        if (granted) {
+          sendNotification({
+            title: t('nexthubx.exitGuard.notifyTitle'),
+            body: t('nexthubx.exitGuard.notifyBody', {
+              actual: normIp(actualIp),
+              expected: normIp(expectedExitIp),
+            }),
+          })
+        }
+      } catch (err) {
+        console.error('[nexthubx] exit-guard notification failed', err)
+      }
+    })()
+  }, [status, setupInProgress, prolonged, expectedExitIp, actualIp, t])
+
+  // 不渲染任何 UI:不一致提示改由账号卡 / IP 卡内联呈现,本组件仅做后台监测 + 被动通知。
+  return null
 }
