@@ -171,6 +171,13 @@ export const AccountCard = () => {
     }
   })
 
+  // 绑定等待期手动刷新:即时拉一次 sync(去抖 20s),让 bindStatus 尽快更新。
+  // 区别于卡片「重新激活」——这里只是主动拉状态,不重走激活。
+  const onRefreshBind = () => {
+    requestImmediateNexthubxSync()
+    showNotice.info('nexthubx.account.bind.refreshing')
+  }
+
   const enableTun = useCallback(
     async (value: boolean) => {
       mutateVerge({ ...verge, enable_tun_mode: value }, false)
@@ -550,20 +557,9 @@ export const AccountCard = () => {
           <Typography variant="body2" color="text.secondary">
             {t('nexthubx.activate.subtitle')}
           </Typography>
-          {resetNotice && (
-            <Alert
-              severity="warning"
-              variant="outlined"
-              icon={<WarningAmberRounded fontSize="inherit" />}
-              sx={{ alignItems: 'flex-start' }}
-            >
-              {resetNotice.email
-                ? t('nexthubx.activate.resetNoticeWithEmail', {
-                    email: resetNotice.email,
-                  })
-                : t('nexthubx.activate.resetNotice')}
-            </Alert>
-          )}
+          {/* CV 冲突是激活的硬前置:有冲突时**优先且独占**展示(不关掉根本没法激活)。
+              重置通知此刻不可操作,先不显示,待 CV 关停(cvBlock 清空)后再出现,
+              避免两个 warning 同时堆叠、用户不知道先做哪个。 */}
           {cvBlock && (
             <Alert
               severity="warning"
@@ -589,6 +585,20 @@ export const AccountCard = () => {
               sx={{ whiteSpace: 'pre-line', alignItems: 'flex-start' }}
             >
               {`${t('nexthubx.clashVergeConflict.blockingActivate')}\n\n${t('nexthubx.clashVergeConflict.forceStopHint')}`}
+            </Alert>
+          )}
+          {resetNotice && !cvBlock && (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              icon={<WarningAmberRounded fontSize="inherit" />}
+              sx={{ alignItems: 'flex-start' }}
+            >
+              {resetNotice.email
+                ? t('nexthubx.activate.resetNoticeWithEmail', {
+                    email: resetNotice.email,
+                  })
+                : t('nexthubx.activate.resetNotice')}
             </Alert>
           )}
           <TextField
@@ -718,9 +728,18 @@ export const AccountCard = () => {
               <Typography variant="subtitle2">
                 {t('nexthubx.account.bind.pendingTitle')}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {t('nexthubx.account.bind.pendingBody')}
               </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                color="inherit"
+                startIcon={<RefreshRounded fontSize="small" />}
+                onClick={onRefreshBind}
+              >
+                {t('nexthubx.account.bind.refresh')}
+              </Button>
             </Alert>
           )}
 
@@ -742,23 +761,34 @@ export const AccountCard = () => {
                 >
                   {t('nexthubx.account.bind.invitedBody')}
                 </Typography>
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={confirmingBind}
-                  startIcon={
-                    confirmingBind ? (
-                      <CircularProgress size={14} color="inherit" />
-                    ) : (
-                      <CheckCircleRounded />
-                    )
-                  }
-                  onClick={() => void onConfirmBound()}
-                >
-                  {confirmingBind
-                    ? t('nexthubx.account.bind.confirming')
-                    : t('nexthubx.account.bind.confirmButton')}
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    disabled={confirmingBind}
+                    startIcon={
+                      confirmingBind ? (
+                        <CircularProgress size={14} color="inherit" />
+                      ) : (
+                        <CheckCircleRounded />
+                      )
+                    }
+                    onClick={() => void onConfirmBound()}
+                  >
+                    {confirmingBind
+                      ? t('nexthubx.account.bind.confirming')
+                      : t('nexthubx.account.bind.confirmButton')}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="text"
+                    color="inherit"
+                    startIcon={<RefreshRounded fontSize="small" />}
+                    onClick={onRefreshBind}
+                  >
+                    {t('nexthubx.account.bind.refresh')}
+                  </Button>
+                </Stack>
               </Alert>
             )}
 
