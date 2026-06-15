@@ -244,7 +244,7 @@ pub fn detect_official_clash_verge_autostart() -> bool {
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn detect_official_clash_verge_autostart() -> bool {
+pub const fn detect_official_clash_verge_autostart() -> bool {
     false
 }
 

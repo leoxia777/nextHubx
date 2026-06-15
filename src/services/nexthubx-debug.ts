@@ -5,7 +5,12 @@
  * 便于在用户机上**直接 SSH 读取**定位问题(前端 console 不落盘、SSH 看不到)。
  * 仅保留最近 N 行,避免无限增长。生产期可按需关闭(见 DEBUG_ENABLED)。
  */
-import { BaseDirectory, exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import {
+  BaseDirectory,
+  exists,
+  readTextFile,
+  writeTextFile,
+} from '@tauri-apps/plugin-fs'
 
 const DEBUG_FILE = 'nexthubx-debug.log'
 const DEBUG_BASE_DIR = BaseDirectory.AppData

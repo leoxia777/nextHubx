@@ -66,9 +66,7 @@ const SettingSystem = ({ onError }: Props) => {
   ) => value
 
   // 锁定项:只读、强制 checked、disabled,附 tooltip 说明
-  const lockedSwitch = (
-    <MuiSwitch edge="end" checked disabled />
-  )
+  const lockedSwitch = <MuiSwitch edge="end" checked disabled />
 
   return (
     <SettingList title={t('settings.sections.system.title')}>
@@ -106,7 +104,9 @@ const SettingSystem = ({ onError }: Props) => {
           valueProps="checked"
           onCatch={onError}
           onFormat={onSwitchFormat}
-          onChange={(e) => mutateClash((old) => ({ ...old!, 'allow-lan': e }), false)}
+          onChange={(e) =>
+            mutateClash((old) => ({ ...old!, 'allow-lan': e }), false)
+          }
           onGuard={(e) => patchClash({ 'allow-lan': e })}
         >
           <Switch edge="end" />
