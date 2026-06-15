@@ -210,10 +210,10 @@ export const AccountCard = () => {
   const onForceStopCv = useLockFn(async () => {
     setStoppingCv(true)
     try {
-      // CV 可能已被手动关掉 → 先复检,避免白弹一次密码框。
-      if (await detectOfficialClashVerge()) {
-        await stopOfficialClashVerge()
-      }
+      // 一键关停:停运行中的 CV(若在跑,弹一次密码)+ 关其开机自启(用户级,无密码),都做完再复检放行。
+      // 不再用「是否运行」守门——否则「CV 已停但自启还开」会被跳过、门控永远清不掉(stop 内部自己判断:
+      // 没运行就只关自启、不白弹密码)。
+      await stopOfficialClashVerge()
       const ok = await checkClashVergeGate()
       if (ok) showNotice.success('nexthubx.clashVergeConflict.forceStopOk')
     } catch (err) {
