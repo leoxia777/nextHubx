@@ -9,10 +9,7 @@ import { useSystemState } from '@/hooks/use-system-state'
 import { isServiceAvailable } from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
-import {
-  loadClientState,
-  saveClientState,
-} from '@/services/nexthubx-store'
+import { loadClientState, saveClientState } from '@/services/nexthubx-store'
 import { showNotice } from '@/services/notice-service'
 
 /**

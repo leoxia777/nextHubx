@@ -31,7 +31,9 @@ export const ClashVergeConflictDialog = () => {
       onOk={dismiss}
       onClose={dismiss}
     >
-      <Typography sx={{ maxWidth: 440, whiteSpace: 'pre-line' }}>{body}</Typography>
+      <Typography sx={{ maxWidth: 440, whiteSpace: 'pre-line' }}>
+        {body}
+      </Typography>
     </BaseDialog>
   )
 }

@@ -120,7 +120,7 @@ export const IpInfoCard = () => {
 
   // 出口 IP 自动比对(无需用户确认),走共享守卫(防误报 5 条件 + 后台通知):
   // - 一致 → 绿色「出口匹配」标;
-  // - 不一致 → 红色警示(全窗口警示由 ExitMismatchGuard 负责)。
+  // - 不一致 → 红色内联警示(不再全屏遮罩;后台被动通知由 ExitMismatchGuard 监测)。
   const {
     status: exitMatch,
     expectedExitIp,

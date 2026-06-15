@@ -73,7 +73,7 @@ import { EnhancedCard } from './enhanced-card'
  *              └─ 子阶段 probe     :轮询实际出口 IP,与 expectedExitIp 比对
  *   activated  出口 IP 一致 → 显示账号信息(email/password + 使用说明 + 重激活)
  *
- * 出口不一致不在此卡片显示账号,改由全局 ExitMismatchGuard 全窗口警示 + 后台通知。
+ * 出口不一致时隐藏账号,卡内内联提示(短=校验中、持续过久=联系支持)+ 后台被动通知。
  */
 
 type VerifyPhase = 'service' | 'support' | 'connect' | 'probe'
@@ -113,12 +113,15 @@ export const AccountCard = () => {
   // 验证中持续轮询实际出口 IP,交给共享守卫做比对(防误报 5 条件)
   const verifying = verifyPhase !== null
   const { data: ipInfo, refetch: refetchIp } = useIpInfoQuery()
-  const { status: exitStatus } = useNexthubxExitGuard({ actualIp: ipInfo?.ip })
+  const { status: exitStatus, prolonged: exitProlonged } = useNexthubxExitGuard(
+    { actualIp: ipInfo?.ip },
+  )
 
   // 账号信息显示门控:
   // - 激活验证流程中(verifying)一律不显示(显示「验证中」);
   // - 验证完成后,已激活且出口未被判定为不一致(match 或 条件不足的 null)即显示;
-  //   仅在**确证 mismatch**(防误报 5 条件全满足)时隐藏账号 + 由全局 ExitMismatchGuard 全窗口警示。
+  //   仅在**确证 mismatch**(防误报 5 条件全满足)时隐藏账号 + 卡内提示(短=校验中、久=联系支持);
+  //   后台被动通知由 ExitMismatchGuard 负责(不再全屏遮罩)。
   //   不一致是「确证才报」,未连接 / IP 未取到时 status=null,不应误隐藏已激活账号。
   const showAccount =
     isActivated &&
@@ -786,12 +789,25 @@ export const AccountCard = () => {
           </Box>
         </Stack>
       ) : (
-        // 已激活但出口未通过(且非验证中)→ 不显示账号,仅提示
+        // 已激活但出口未通过(且非验证中)→ 不显示账号,卡内提示(不再全屏遮罩):
+        // 短暂不一致(可能正在切换 / 瞬态)显示「校验中」;持续过久(prolonged)才升级为
+        // 「请联系技术支持」,避免一抖动就吓用户。后台被动通知由 ExitMismatchGuard 负责。
         <Stack spacing={2} sx={{ alignItems: 'center', py: 2 }}>
-          <WarningAmberRounded color="error" sx={{ fontSize: 32 }} />
-          <Typography variant="body2" color="text.secondary">
-            {t('nexthubx.activate.verify.mismatchHint')}
-          </Typography>
+          {exitProlonged ? (
+            <>
+              <WarningAmberRounded color="error" sx={{ fontSize: 32 }} />
+              <Typography variant="body2" color="text.secondary">
+                {t('nexthubx.activate.verify.mismatchHint')}
+              </Typography>
+            </>
+          ) : (
+            <>
+              <CircularProgress size={28} />
+              <Typography variant="body2" color="text.secondary">
+                {t('nexthubx.activate.verify.verifying')}
+              </Typography>
+            </>
+          )}
         </Stack>
       )}
     </EnhancedCard>
