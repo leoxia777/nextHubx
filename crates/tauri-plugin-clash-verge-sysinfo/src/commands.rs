@@ -62,6 +62,11 @@ pub fn detect_official_clash_verge() -> Result<bool, Error> {
 }
 
 /// 检测官方 Clash Verge 是否配置了开机自启(macOS 查其 LaunchAgent plist;其它平台返回 false)。
+//
+// 非 macOS 平台上 `crate::detect_official_clash_verge_autostart` 是 `const fn`,clippy 据此判定本包装函数
+// 「could be a const fn」并因 workspace `missing_const_for_fn = "deny"` 报错;但 macOS 上该底层函数有副作用
+// (读 plist)非 const,若真把本函数标 const 会编译失败。故跨平台统一 allow,而非 cfg 分叉两份定义。
+#[allow(clippy::missing_const_for_fn)]
 #[command]
 pub fn detect_official_clash_verge_autostart() -> Result<bool, Error> {
     Ok(crate::detect_official_clash_verge_autostart())
