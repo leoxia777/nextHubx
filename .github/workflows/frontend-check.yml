@@ -40,7 +40,9 @@ jobs:
 
       - name: Install pnpm
         if: steps.check_frontend.outputs.frontend == 'true'
-        uses: pnpm/action-setup@v6
+        # 固定到精确补丁版,避免上游发新版时浮动大版本标签(@v6)被瞬时移动导致 "unable to resolve action" 偶发失败;
+        # 与 autobuild.yml 保持一致。
+        uses: pnpm/action-setup@v6.0.8
         with:
           run_install: false
 
