@@ -227,8 +227,8 @@ pub fn detect_official_clash_verge_autostart() -> bool {
     let Some(home) = std::env::var_os("HOME") else {
         return false;
     };
-    let plist = std::path::Path::new(&home)
-        .join("Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist");
+    let plist =
+        std::path::Path::new(&home).join("Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist");
     let Ok(content) = std::fs::read_to_string(&plist) else {
         return false; // plist 不存在 → 未配置自启
     };
@@ -238,8 +238,7 @@ pub fn detect_official_clash_verge_autostart() -> bool {
         .lines()
         .filter_map(|line| {
             let t = line.trim();
-            t.strip_prefix("<string>")
-                .and_then(|s| s.strip_suffix("</string>"))
+            t.strip_prefix("<string>").and_then(|s| s.strip_suffix("</string>"))
         })
         .any(|s| s.starts_with('/') && s.contains("Clash Verge.app") && std::path::Path::new(s).exists())
 }
