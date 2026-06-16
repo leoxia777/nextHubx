@@ -305,9 +305,18 @@ pub fn kill_stray_mihomo(config_marker: &str) -> usize {
 /// Err("STILL_RUNNING") = 杀后仍在(罕见,可能被服务拉起,需手动处理);Err(其它) = 执行失败。
 #[cfg(target_os = "macos")]
 pub fn stop_official_clash_verge() -> Result<(), String> {
-    // 一条提权 shell:先停掉 CV 的 root 特权服务(否则**服务模式**下它会立刻把核心重新拉起,
-    // 单纯 pkill 核心永远赢不了 → 报 STILL_RUNNING),再杀残留核心 + GUI。
-    // `bootout` 把守护从 launchd 移除(本次启动内不再被 KeepAlive 复活);`|| true` 容忍未加载 / 无匹配进程。
+    // ① 关闭 CV 登录自启(用户级,无需提权)——无论 CV 是否在跑都执行。
+    //    门控是 `运行中 || 自启`:只杀进程不关自启,CV 重登又抢网、门会一直拦(本次踩坑)。
+    disable_official_clash_verge_autostart();
+
+    // ② CV 未在运行 → 无需提权杀进程(避免白弹密码框);自启已关即可放行。
+    //    覆盖「CV 已停但自启还开」的场景:此前前端会跳过 stop 致门永远清不掉。
+    if !detect_official_clash_verge() {
+        return Ok(());
+    }
+
+    // ③ CV 在运行 → 提权一次性杀:bootout root 特权服务(否则服务模式下核心被秒级复活、
+    //    pkill 永远赢不了)+ pkill 核心 + GUI。`|| true` 容忍未加载 / 无匹配进程。
     let sh = "/bin/launchctl bootout system/io.github.clash-verge-rev.clash-verge-rev.service 2>/dev/null || true; \
               /usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/verge-mihomo' || true; \
               /usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/clash-verge' || true";
@@ -325,14 +334,35 @@ pub fn stop_official_clash_verge() -> Result<(), String> {
         }
         return Err(format!("关停失败: {}", err.trim()));
     }
-    // 等核心真正消失(最多约 2s)再返回,避免前端立刻重新检测时进程尚未退出。
-    for _ in 0..10 {
+    // ④ 等 CV 进程真正消失(加长到 ~6s:bootout 停服务 + 核心/GUI 退出有竞态,2s 太短会误报 STILL_RUNNING)。
+    for _ in 0..30 {
         if !detect_official_clash_verge() {
             return Ok(());
         }
         std::thread::sleep(std::time::Duration::from_millis(200));
     }
     Err("STILL_RUNNING".into())
+}
+
+/// 关闭官方 Clash Verge 的登录自启(用户级,无需提权):bootout 本用户已加载的 LaunchAgent + 删其 plist。
+/// `detect_official_clash_verge_autostart` 按 plist 文件存在判断 → 删文件即使其转 false,门控放行。
+/// 仅针对 CV 专属 label,绝不碰 NextHubX 自身;全程容错,失败不影响关停主流程。
+#[cfg(target_os = "macos")]
+fn disable_official_clash_verge_autostart() {
+    let Some(home) = std::env::var_os("HOME") else {
+        return;
+    };
+    let plist =
+        std::path::Path::new(&home).join("Library/LaunchAgents/io.github.clash-verge-rev.clash-verge-rev.plist");
+    if !plist.exists() {
+        return;
+    }
+    // 先 bootout 本用户 gui 域里已加载的 agent($(id -u) 交 sh 展开),再删 plist。
+    let _ = std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg("/bin/launchctl bootout gui/$(id -u)/io.github.clash-verge-rev.clash-verge-rev 2>/dev/null; true")
+        .output();
+    let _ = std::fs::remove_file(&plist);
 }
 
 /// Windows:杀官方 CV 进程(核心可能由服务以 SYSTEM 运行,taskkill 需管理员权限;
