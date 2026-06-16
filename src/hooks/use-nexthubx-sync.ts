@@ -122,6 +122,8 @@ export const useNexthubxAutoSync = () => {
         // team 绑定状态 + 是否自助席位:缺省(老后端)保留旧值,避免误清空绑定 UI 依赖
         bindStatus: data.bindStatus ?? state.bindStatus,
         isSelfBind: data.isSelfBind ?? state.isSelfBind,
+        // 自助绑定角色:缺省(老后端)保留旧值,避免误清空导致 creator 流程回退成 member
+        selfBindRole: data.selfBindRole ?? state.selfBindRole,
         // 自助绑定 3 段文案:缺省(老后端/非自助)保留旧值,避免误清空
         selfBindTips: data.selfBindTips ?? state.selfBindTips,
         // 保留验证完成标志:同步不应把它清掉(否则会误触发重开后重跑验证)

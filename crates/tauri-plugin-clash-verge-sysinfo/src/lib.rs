@@ -301,8 +301,9 @@ pub fn kill_stray_mihomo(config_marker: &str) -> usize {
 /// 一次性杀掉 CV 的 root 核心 + 用户态 GUI。**只匹配 `Clash Verge.app` 路径下的进程,
 /// 绝不误杀 NextHubX 自身的 verge-mihomo(其路径含 com.nexthubx.app)。**
 ///
-/// 返回:Ok(()) = 已关停并确认 CV 不再运行;Err("CANCELLED") = 用户取消了密码框;
-/// Err("STILL_RUNNING") = 杀后仍在(罕见,可能被服务拉起,需手动处理);Err(其它) = 执行失败。
+/// 返回:Ok(()) = 已关停并确认 CV 不再运行(以进程是否真消失为准,不看 osascript 退出码);
+/// Err("CANCELLED") = 用户取消了密码框;Err("STILL_RUNNING") = 杀后 ~6s 仍在(罕见,需手动处理);
+/// Err(其它) = osascript 启动失败(连执行都没起来)。
 #[cfg(target_os = "macos")]
 pub fn stop_official_clash_verge() -> Result<(), String> {
     // ① 关闭 CV 登录自启(用户级,无需提权)——无论 CV 是否在跑都执行。
@@ -326,15 +327,15 @@ pub fn stop_official_clash_verge() -> Result<(), String> {
         .arg(&script)
         .output()
         .map_err(|e| format!("启动 osascript 失败: {e}"))?;
-    if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr);
-        // 用户取消密码框 → osascript 报 "User canceled. (-128)"
-        if err.contains("-128") || err.to_lowercase().contains("cancel") {
-            return Err("CANCELLED".into());
-        }
-        return Err(format!("关停失败: {}", err.trim()));
+    // 用户取消密码框 → osascript 报 "User canceled. (-128)":这是**唯一**据 stderr 早退的情形。
+    let err = String::from_utf8_lossy(&output.stderr);
+    if err.contains("-128") || err.to_lowercase().contains("cancel") {
+        return Err("CANCELLED".into());
     }
-    // ④ 等 CV 进程真正消失(加长到 ~6s:bootout 停服务 + 核心/GUI 退出有竞态,2s 太短会误报 STILL_RUNNING)。
+    // ④ **不据 osascript 退出码判失败**:实测「提权 shell 杀进程」场景下它会偶发返回非零 + 空 stderr,
+    //    但 kill 其实已成功(老 mac debug.log 铁证:报 fail 后 12s CV 已不在)。早退报失败 → 误判 + 门清不掉,
+    //    多版兜圈子的真凶。改以「CV 进程是否真消失」为唯一成功判据:轮询 ~6s,detect 为假即 Ok。
+    //    (~6s:bootout 停服务 + 核心/GUI 退出有竞态,2s 太短会误报 STILL_RUNNING。)
     for _ in 0..30 {
         if !detect_official_clash_verge() {
             return Ok(());

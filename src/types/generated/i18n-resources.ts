@@ -221,6 +221,10 @@ export interface TranslationResources {
           confirmFail: string
           confirming: string
           confirmOk: string
+          creatorBody: string
+          creatorBoundLabel: string
+          creatorConfirm: string
+          creatorTitle: string
           invitedBody: string
           invitedTitle: string
           notInvited: string

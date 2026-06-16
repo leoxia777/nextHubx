@@ -34,6 +34,8 @@ export interface NexthubxClientState {
   bindStatus?: string
   /** 是否自助绑定席位(sync 下发);仅自助席位展示绑定状态 UI,平台分配席位不展示。 */
   isSelfBind?: boolean
+  /** 自助绑定角色(sync 下发):creator(manager@域 主账号,建团流程、无邀请)/ member(被邀请)。缺省视为 member。 */
+  selfBindRole?: string
   /** 自助绑定 3 段状态文案(sync 下发,后台可编辑);空/缺省字段回退内置 i18n。 */
   selfBindTips?: { pending: string; invited: string; bound: string } | null
   /**
