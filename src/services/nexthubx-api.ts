@@ -103,6 +103,8 @@ export interface SyncActiveResult {
   isSelfBind?: boolean
   /** 自助绑定角色:creator(manager@域 主账号,走建团流程、无邀请)/ member(被邀请)。缺省视为 member。 */
   selfBindRole?: string
+  /** 自助绑定用户个人邮箱;客户端把文案里的 {pemail} 占位符替换为它。缺省/非自助席位为空。 */
+  selfBindPersonalEmail?: string | null
   /** 自助绑定 3 段状态文案(运营后台可编辑,按 bindStatus 显示);缺省/null 或空字段时客户端回退内置 i18n。 */
   selfBindTips?: { pending: string; invited: string; bound: string } | null
 }
