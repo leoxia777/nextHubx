@@ -652,73 +652,9 @@ export const AccountCard = () => {
         </Stack>
       ) : showAccount ? (
         <Stack spacing={2}>
-          <TextField
-            fullWidth
-            size="small"
-            label={t('nexthubx.account.email')}
-            value={clientState.identityEmail}
-            slotProps={{
-              input: {
-                readOnly: true,
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={() => void copy(clientState.identityEmail)}
-                      title={t('nexthubx.account.copy')}
-                    >
-                      <ContentCopyRounded fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          <TextField
-            fullWidth
-            size="small"
-            label={t('nexthubx.account.password')}
-            type={showPassword ? 'text' : 'password'}
-            value={clientState.identityPassword}
-            slotProps={{
-              input: {
-                readOnly: true,
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() => setShowPassword((v) => !v)}
-                      title={t(
-                        showPassword
-                          ? 'nexthubx.account.hidePassword'
-                          : 'nexthubx.account.showPassword',
-                      )}
-                    >
-                      {showPassword ? (
-                        <VisibilityOffRounded fontSize="small" />
-                      ) : (
-                        <VisibilityRounded fontSize="small" />
-                      )}
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={() => void copy(clientState.identityPassword)}
-                      title={t('nexthubx.account.copy')}
-                    >
-                      <ContentCopyRounded fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          {/* 自助绑定状态(仅自助席位 isSelfBind 展示;平台分配席位由运营代绑,不显示)。
-              email/password 即上方展示的 cloud-identity 账号密码——用户用它去 Claude 接受邀请。 */}
-          {clientState.isSelfBind && clientState.bindStatus === 'none' && (
+          {/* 自助绑定按 team 邀请状态(bindStatus)分流:none(待邀请)只提示联系主管、**不显账号密码**
+              (还用不上);invite_sent/bound 及非自助席位才显示账号密码。文案优先取后端可编辑 selfBindTips。 */}
+          {clientState.isSelfBind && clientState.bindStatus === 'none' ? (
             <Alert
               severity="info"
               variant="outlined"
@@ -728,8 +664,13 @@ export const AccountCard = () => {
               <Typography variant="subtitle2">
                 {t('nexthubx.account.bind.pendingTitle')}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {t('nexthubx.account.bind.pendingBody')}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mb: 1, whiteSpace: 'pre-line' }}
+              >
+                {clientState.selfBindTips?.pending?.trim() ||
+                  t('nexthubx.account.bind.pendingBody')}
               </Typography>
               <Button
                 size="small"
@@ -741,82 +682,156 @@ export const AccountCard = () => {
                 {t('nexthubx.account.bind.refresh')}
               </Button>
             </Alert>
-          )}
+          ) : (
+            <>
+              <TextField
+                fullWidth
+                size="small"
+                label={t('nexthubx.account.email')}
+                value={clientState.identityEmail}
+                slotProps={{
+                  input: {
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={() => void copy(clientState.identityEmail)}
+                          title={t('nexthubx.account.copy')}
+                        >
+                          <ContentCopyRounded fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
 
-          {clientState.isSelfBind &&
-            clientState.bindStatus === 'invite_sent' && (
-              <Alert
-                severity="success"
-                variant="outlined"
-                icon={<MarkEmailReadRounded fontSize="inherit" />}
-                sx={{ alignItems: 'flex-start' }}
-              >
-                <Typography variant="subtitle2">
-                  {t('nexthubx.account.bind.invitedTitle')}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 1, whiteSpace: 'pre-line' }}
+              <TextField
+                fullWidth
+                size="small"
+                label={t('nexthubx.account.password')}
+                type={showPassword ? 'text' : 'password'}
+                value={clientState.identityPassword}
+                slotProps={{
+                  input: {
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => setShowPassword((v) => !v)}
+                          title={t(
+                            showPassword
+                              ? 'nexthubx.account.hidePassword'
+                              : 'nexthubx.account.showPassword',
+                          )}
+                        >
+                          {showPassword ? (
+                            <VisibilityOffRounded fontSize="small" />
+                          ) : (
+                            <VisibilityRounded fontSize="small" />
+                          )}
+                        </IconButton>
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={() =>
+                            void copy(clientState.identityPassword)
+                          }
+                          title={t('nexthubx.account.copy')}
+                        >
+                          <ContentCopyRounded fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+
+              {/* invite_sent / bound:在账号密码下方展示对应状态提示(文案优先取后端 selfBindTips,缺省回退 i18n)。 */}
+              {clientState.isSelfBind &&
+                clientState.bindStatus === 'invite_sent' && (
+                  <Alert
+                    severity="success"
+                    variant="outlined"
+                    icon={<MarkEmailReadRounded fontSize="inherit" />}
+                    sx={{ alignItems: 'flex-start' }}
+                  >
+                    <Typography variant="subtitle2">
+                      {t('nexthubx.account.bind.invitedTitle')}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1, whiteSpace: 'pre-line' }}
+                    >
+                      {clientState.selfBindTips?.invited?.trim() ||
+                        t('nexthubx.account.bind.invitedBody')}
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={confirmingBind}
+                        startIcon={
+                          confirmingBind ? (
+                            <CircularProgress size={14} color="inherit" />
+                          ) : (
+                            <CheckCircleRounded />
+                          )
+                        }
+                        onClick={() => void onConfirmBound()}
+                      >
+                        {confirmingBind
+                          ? t('nexthubx.account.bind.confirming')
+                          : t('nexthubx.account.bind.confirmButton')}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="text"
+                        color="inherit"
+                        startIcon={<RefreshRounded fontSize="small" />}
+                        onClick={onRefreshBind}
+                      >
+                        {t('nexthubx.account.bind.refresh')}
+                      </Button>
+                    </Stack>
+                  </Alert>
+                )}
+
+              {clientState.isSelfBind && clientState.bindStatus === 'bound' && (
+                <Alert
+                  severity="success"
+                  variant="outlined"
+                  icon={<CheckCircleRounded fontSize="inherit" />}
                 >
-                  {t('nexthubx.account.bind.invitedBody')}
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    disabled={confirmingBind}
-                    startIcon={
-                      confirmingBind ? (
-                        <CircularProgress size={14} color="inherit" />
-                      ) : (
-                        <CheckCircleRounded />
-                      )
-                    }
-                    onClick={() => void onConfirmBound()}
-                  >
-                    {confirmingBind
-                      ? t('nexthubx.account.bind.confirming')
-                      : t('nexthubx.account.bind.confirmButton')}
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="text"
-                    color="inherit"
-                    startIcon={<RefreshRounded fontSize="small" />}
-                    onClick={onRefreshBind}
-                  >
-                    {t('nexthubx.account.bind.refresh')}
-                  </Button>
-                </Stack>
-              </Alert>
-            )}
+                  {clientState.selfBindTips?.bound?.trim() ||
+                    t('nexthubx.account.bind.boundLabel')}
+                </Alert>
+              )}
 
-          {clientState.isSelfBind && clientState.bindStatus === 'bound' && (
-            <Alert
-              severity="success"
-              variant="outlined"
-              icon={<CheckCircleRounded fontSize="inherit" />}
-            >
-              {t('nexthubx.account.bind.boundLabel')}
-            </Alert>
+              {/* 使用说明:非自助席位、或自助已绑定才显示(invite_sent 阶段的提示已含登录引导)。
+              优先取后端「系统配置」下发的 usageTips,缺省回退内置 i18n。 */}
+              {(!clientState.isSelfBind ||
+                clientState.bindStatus === 'bound') && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                    {t('nexthubx.account.usage.title')}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'pre-line' }}
+                  >
+                    {clientState?.usageTips?.trim() ||
+                      t('nexthubx.account.usage.body')}
+                  </Typography>
+                </Box>
+              )}
+            </>
           )}
-
-          <Box>
-            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-              {t('nexthubx.account.usage.title')}
-            </Typography>
-            {/* 使用说明优先取后端「系统配置」下发的 tips(激活/sync 时存入 usageTips),
-                缺省(老后端/未配置)回退内置 i18n 文案。whiteSpace 保留运营配置的换行。 */}
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ whiteSpace: 'pre-line' }}
-            >
-              {clientState?.usageTips?.trim() ||
-                t('nexthubx.account.usage.body')}
-            </Typography>
-          </Box>
         </Stack>
       ) : (
         // 已激活但出口未通过(且非验证中)→ 不显示账号,卡内提示(不再全屏遮罩):
