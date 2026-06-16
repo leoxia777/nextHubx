@@ -96,6 +96,10 @@
       "notInvited": "The invite hasn't been sent yet — try again later or contact your administrator.",
       "confirmFail": "Failed to confirm, please try again later.",
       "boundLabel": "Joined Claude Team. Sign in to claude.ai with the account below (Continue with Google).",
+      "creatorTitle": "Create your team (owner)",
+      "creatorBody": "Activated. You are this team's owner and need to create the Claude team:\n1. Using the account + password below, sign in at claude.ai via \"Continue with Google\";\n2. Create a Team and follow the prompts to enter subscription/card details;\n3. Once created, come back here and tap \"Confirm team created\".\nMembers can be enrolled afterwards from the admin console.",
+      "creatorConfirm": "Confirm team created",
+      "creatorBoundLabel": "Team created. Sign in to claude.ai with the account below (Continue with Google) to manage your team.",
       "refresh": "Refresh status",
       "refreshing": "Refreshing bind status…"
     },

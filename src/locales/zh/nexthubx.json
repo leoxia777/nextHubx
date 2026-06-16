@@ -96,6 +96,10 @@
       "notInvited": "邀请尚未发送,请稍后再试或联系管理员。",
       "confirmFail": "确认失败,请稍后重试。",
       "boundLabel": "已加入 Claude Team,可用下方账号(Continue with Google)登录 claude.ai。",
+      "creatorTitle": "创建团队主账号",
+      "creatorBody": "账号已激活。你是本团队的主账号(creator),需由你创建第三方 team:\n1. 用下方账号 + 密码,在 claude.ai 选「Continue with Google」登录;\n2. 创建团队(Team),按引导填写订阅卡信息完成开通;\n3. 创建成功后回到本页点「确认已建团」。\n完成后即可由管理员在后台为成员开通席位。",
+      "creatorConfirm": "确认已建团",
+      "creatorBoundLabel": "团队已创建。可用下方账号(Continue with Google)登录 claude.ai 管理团队。",
       "refresh": "刷新状态",
       "refreshing": "正在刷新绑定状态…"
     },

@@ -6,6 +6,7 @@ import {
   HourglassTopRounded,
   MarkEmailReadRounded,
   RefreshRounded,
+  RocketLaunchRounded,
   ShieldRounded,
   SupportAgentRounded,
   VisibilityOffRounded,
@@ -135,6 +136,10 @@ export const AccountCard = () => {
 
   const showForm = !isActivated || !clientState || (reactivating && !verifying)
 
+  // 自助绑定角色:creator = manager@域 主账号,走「自建第三方 team」流程(无邀请绑定);
+  // member = 被邀请加入。creator 的 bindStatus 一直停在 none,直到本人确认建团后 → bound。
+  const isCreator = clientState?.selfBindRole === 'creator'
+
   const copy = useLockFn(async (value: string) => {
     try {
       await writeText(value)
@@ -145,7 +150,7 @@ export const AccountCard = () => {
   })
 
   // 自助绑定末步:用户在客户端自报「已绑定」。乐观更新本地 bindStatus=bound + 触发权威同步回填。
-  // 仅 invite_sent 才会渲染此按钮;后端再校验(非 invite_sent → 409 提示)。
+  // member 在 invite_sent、creator 在 none(激活后自建团) 时渲染此按钮;后端再按 role 校验来态(不符 → 409)。
   const onConfirmBound = useLockFn(async () => {
     if (!clientState?.clientToken) return
     setConfirmingBind(true)
@@ -652,9 +657,13 @@ export const AccountCard = () => {
         </Stack>
       ) : showAccount ? (
         <Stack spacing={2}>
-          {/* 自助绑定按 team 邀请状态(bindStatus)分流:none(待邀请)只提示联系主管、**不显账号密码**
-              (还用不上);invite_sent/bound 及非自助席位才显示账号密码。文案优先取后端可编辑 selfBindTips。 */}
-          {clientState.isSelfBind && clientState.bindStatus === 'none' ? (
+          {/* 自助绑定按角色 + team 状态分流:
+              - member + none(待邀请):只提示联系主管、**不显账号密码**(还用不上);
+              - creator:始终显示账号密码(本人要用 manager@域 登第三方建 team),下方走「建团」引导;
+              - invite_sent / bound / 非自助席位:显示账号密码。文案优先取后端可编辑 selfBindTips。 */}
+          {clientState.isSelfBind &&
+          !isCreator &&
+          clientState.bindStatus === 'none' ? (
             <Alert
               severity="info"
               variant="outlined"
@@ -750,8 +759,61 @@ export const AccountCard = () => {
                 }}
               />
 
+              {/* creator(manager@域 主账号):无邀请绑定,激活后用上方账号密码以 Continue with Google
+                  登第三方创建 team(分步引导),建好后本人点「确认已建团」→ bound。bound 后落到下方使用说明。 */}
+              {clientState.isSelfBind &&
+                isCreator &&
+                clientState.bindStatus !== 'bound' && (
+                  <Alert
+                    severity="info"
+                    variant="outlined"
+                    icon={<RocketLaunchRounded fontSize="inherit" />}
+                    sx={{ alignItems: 'flex-start' }}
+                  >
+                    <Typography variant="subtitle2">
+                      {t('nexthubx.account.bind.creatorTitle')}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1, whiteSpace: 'pre-line' }}
+                    >
+                      {t('nexthubx.account.bind.creatorBody')}
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={confirmingBind}
+                        startIcon={
+                          confirmingBind ? (
+                            <CircularProgress size={14} color="inherit" />
+                          ) : (
+                            <CheckCircleRounded />
+                          )
+                        }
+                        onClick={() => void onConfirmBound()}
+                      >
+                        {confirmingBind
+                          ? t('nexthubx.account.bind.confirming')
+                          : t('nexthubx.account.bind.creatorConfirm')}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="text"
+                        color="inherit"
+                        startIcon={<RefreshRounded fontSize="small" />}
+                        onClick={onRefreshBind}
+                      >
+                        {t('nexthubx.account.bind.refresh')}
+                      </Button>
+                    </Stack>
+                  </Alert>
+                )}
+
               {/* invite_sent / bound:在账号密码下方展示对应状态提示(文案优先取后端 selfBindTips,缺省回退 i18n)。 */}
               {clientState.isSelfBind &&
+                !isCreator &&
                 clientState.bindStatus === 'invite_sent' && (
                   <Alert
                     severity="success"
@@ -807,8 +869,10 @@ export const AccountCard = () => {
                   variant="outlined"
                   icon={<CheckCircleRounded fontSize="inherit" />}
                 >
-                  {clientState.selfBindTips?.bound?.trim() ||
-                    t('nexthubx.account.bind.boundLabel')}
+                  {isCreator
+                    ? t('nexthubx.account.bind.creatorBoundLabel')
+                    : clientState.selfBindTips?.bound?.trim() ||
+                      t('nexthubx.account.bind.boundLabel')}
                 </Alert>
               )}
 
