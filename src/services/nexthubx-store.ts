@@ -36,6 +36,8 @@ export interface NexthubxClientState {
   isSelfBind?: boolean
   /** 自助绑定角色(sync 下发):creator(manager@域 主账号,建团流程、无邀请)/ member(被邀请)。缺省视为 member。 */
   selfBindRole?: string
+  /** 自助绑定用户个人邮箱(sync 下发);渲染时把文案 {pemail} 占位符替换为它。缺省/非自助为空。 */
+  selfBindPersonalEmail?: string | null
   /** 自助绑定 3 段状态文案(sync 下发,后台可编辑);空/缺省字段回退内置 i18n。 */
   selfBindTips?: { pending: string; invited: string; bound: string } | null
   /**

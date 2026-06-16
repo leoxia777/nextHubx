@@ -140,6 +140,13 @@ export const AccountCard = () => {
   // member = 被邀请加入。creator 的 bindStatus 一直停在 none,直到本人确认建团后 → bound。
   const isCreator = clientState?.selfBindRole === 'creator'
 
+  // 把绑定文案里的 {pemail} 占位符替换为用户个人邮箱(后端可编辑文案已在服务端替换,这里覆盖回退到
+  // 内置 i18n 的情形;无个人邮箱时原样保留)。split/join 避免正则特殊字符。
+  const withPemail = (s: string): string => {
+    const pemail = clientState?.selfBindPersonalEmail
+    return pemail ? s.split('{pemail}').join(pemail) : s
+  }
+
   const copy = useLockFn(async (value: string) => {
     try {
       await writeText(value)
@@ -678,8 +685,10 @@ export const AccountCard = () => {
                 color="text.secondary"
                 sx={{ mb: 1, whiteSpace: 'pre-line' }}
               >
-                {clientState.selfBindTips?.pending?.trim() ||
-                  t('nexthubx.account.bind.pendingBody')}
+                {withPemail(
+                  clientState.selfBindTips?.pending?.trim() ||
+                    t('nexthubx.account.bind.pendingBody'),
+                )}
               </Typography>
               <Button
                 size="small"
@@ -829,8 +838,10 @@ export const AccountCard = () => {
                       color="text.secondary"
                       sx={{ mb: 1, whiteSpace: 'pre-line' }}
                     >
-                      {clientState.selfBindTips?.invited?.trim() ||
-                        t('nexthubx.account.bind.invitedBody')}
+                      {withPemail(
+                        clientState.selfBindTips?.invited?.trim() ||
+                          t('nexthubx.account.bind.invitedBody'),
+                      )}
                     </Typography>
                     <Stack direction="row" spacing={1}>
                       <Button
@@ -869,16 +880,18 @@ export const AccountCard = () => {
                   variant="outlined"
                   icon={<CheckCircleRounded fontSize="inherit" />}
                 >
-                  {isCreator
-                    ? t('nexthubx.account.bind.creatorBoundLabel')
-                    : clientState.selfBindTips?.bound?.trim() ||
-                      t('nexthubx.account.bind.boundLabel')}
+                  {withPemail(
+                    isCreator
+                      ? t('nexthubx.account.bind.creatorBoundLabel')
+                      : clientState.selfBindTips?.bound?.trim() ||
+                          t('nexthubx.account.bind.boundLabel'),
+                  )}
                 </Alert>
               )}
 
               {/* 使用说明:非自助席位、或自助已绑定才显示(invite_sent 阶段的提示已含登录引导)。
               优先取后端「系统配置」下发的 usageTips,缺省回退内置 i18n。 */}
-              {(!clientState.isSelfBind ||
+              {/* {(!clientState.isSelfBind ||
                 clientState.bindStatus === 'bound') && (
                 <Box>
                   <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -893,7 +906,7 @@ export const AccountCard = () => {
                       t('nexthubx.account.usage.body')}
                   </Typography>
                 </Box>
-              )}
+              )} */}
             </>
           )}
         </Stack>

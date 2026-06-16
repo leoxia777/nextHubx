@@ -14,6 +14,12 @@ import { showNotice } from '@/services/notice-service'
 const CLIENT_STATE_KEY = ['nexthubx-client-state']
 /** 定期同步间隔:每 2 分钟(兜底)。原 10 分钟过慢——重置后用户会先撞上"IP 检测失败"才被感知。 */
 const SYNC_INTERVAL_MS = 2 * 60 * 1000
+/**
+ * 快轮询间隔:5s。仅在「等服务端推进绑定态」时启用 —— 自助绑定席位且 bindStatus≠bound
+ * (member 待邀请/已邀请、creator 待确认建团)。这些态下绑定推进多来自服务端(运营发邀请 / 双通道确认),
+ * 客户端需尽快感知;bound 后及非自助席位回到 2min 兜底,避免长期空转。304 很轻,desktop 端代价可忽略。
+ */
+const FAST_SYNC_INTERVAL_MS = 5 * 1000
 
 /**
  * 模块级「立即同步」触发器(去抖 20s)。供 IP 检测/代理疑似中断等场景跨组件请求一次尽快同步:
@@ -124,6 +130,9 @@ export const useNexthubxAutoSync = () => {
         isSelfBind: data.isSelfBind ?? state.isSelfBind,
         // 自助绑定角色:缺省(老后端)保留旧值,避免误清空导致 creator 流程回退成 member
         selfBindRole: data.selfBindRole ?? state.selfBindRole,
+        // 自助绑定个人邮箱:缺省(老后端)保留旧值;用于渲染时替换文案 {pemail} 占位符
+        selfBindPersonalEmail:
+          data.selfBindPersonalEmail ?? state.selfBindPersonalEmail,
         // 自助绑定 3 段文案:缺省(老后端/非自助)保留旧值,避免误清空
         selfBindTips: data.selfBindTips ?? state.selfBindTips,
         // 保留验证完成标志:同步不应把它清掉(否则会误触发重开后重跑验证)
@@ -142,13 +151,29 @@ export const useNexthubxAutoSync = () => {
   useEffect(() => {
     // 注册模块级「立即同步」触发器(供 IP/代理失败等场景跨组件调用)
     immediateSyncRef = runSync
-    // 启动即同步一次
-    void runSync()
-    const timer = setInterval(() => {
-      void runSync()
-    }, SYNC_INTERVAL_MS)
+    let stopped = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    // 自重排心跳:每次同步后按当前绑定态决定下次间隔(等服务端推进绑定态 → 5s,否则 2min)。
+    const tick = async () => {
+      await runSync()
+      if (stopped) return
+      let fast = false
+      try {
+        const st = await loadClientState()
+        fast = Boolean(st?.isSelfBind) && st?.bindStatus !== 'bound'
+      } catch {
+        // 读本地态失败 → 用默认 2min 间隔
+      }
+      if (stopped) return
+      timer = setTimeout(
+        () => void tick(),
+        fast ? FAST_SYNC_INTERVAL_MS : SYNC_INTERVAL_MS,
+      )
+    }
+    void tick()
     return () => {
-      clearInterval(timer)
+      stopped = true
+      if (timer) clearTimeout(timer)
       if (immediateSyncRef === runSync) immediateSyncRef = null
     }
   }, [runSync])
