@@ -147,6 +147,13 @@ export const AccountCard = () => {
     return pemail ? s.split('{pemail}').join(pemail) : s
   }
 
+  // 个人邮箱脱敏:本地部留前 2 位 + **,域名保留(8912345@qq.com → 89**@qq.com)。
+  const maskEmail = (email: string): string => {
+    const at = email.indexOf('@')
+    if (at <= 0) return email
+    return `${email.slice(0, Math.min(2, at))}**${email.slice(at)}`
+  }
+
   const copy = useLockFn(async (value: string) => {
     try {
       await writeText(value)
@@ -664,6 +671,14 @@ export const AccountCard = () => {
         </Stack>
       ) : showAccount ? (
         <Stack spacing={2}>
+          {/* 顶部小字幕:脱敏个人邮箱(自助席位常显),提示该去哪个邮箱收邀请 + 便于核对身份。 */}
+          {clientState.isSelfBind && clientState.selfBindPersonalEmail && (
+            <Typography variant="caption" color="text.secondary">
+              {t('nexthubx.account.activatedEmail', {
+                email: maskEmail(clientState.selfBindPersonalEmail),
+              })}
+            </Typography>
+          )}
           {/* 自助绑定按角色 + team 状态分流:
               - member + none(待邀请):只提示联系主管、**不显账号密码**(还用不上);
               - creator:始终显示账号密码(本人要用 manager@域 登第三方建 team),下方走「建团」引导;

@@ -109,7 +109,8 @@
       "syncing": "Syncing…",
       "revoked": "Seat revoked, please reactivate",
       "lastSync": "Last synced"
-    }
+    },
+    "activatedEmail": "Activated email {{email}}"
   },
   "sync": {
     "configUpdated": "Proxy configuration updated",
