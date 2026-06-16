@@ -101,6 +101,8 @@ export interface SyncActiveResult {
   bindStatus?: string
   /** 是否自助绑定席位;仅自助席位展示绑定状态 UI。可能缺省(老后端,视为非自助)。 */
   isSelfBind?: boolean
+  /** 自助绑定 3 段状态文案(运营后台可编辑,按 bindStatus 显示);缺省/null 或空字段时客户端回退内置 i18n。 */
+  selfBindTips?: { pending: string; invited: string; bound: string } | null
 }
 
 export type SyncResult =
