@@ -215,6 +215,7 @@ export interface TranslationResources {
     }
     nexthubx: {
       account: {
+        activatedEmail: string
         bind: {
           boundLabel: string
           confirmButton: string

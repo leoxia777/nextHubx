@@ -109,7 +109,8 @@
       "syncing": "正在同步…",
       "revoked": "席位已失效，请重新激活",
       "lastSync": "上次同步"
-    }
+    },
+    "activatedEmail": "激活邮箱 {{email}}"
   },
   "sync": {
     "configUpdated": "代理配置已更新",
