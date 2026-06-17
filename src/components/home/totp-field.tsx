@@ -9,14 +9,10 @@ import {
 } from '@mui/material'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { useLockFn } from 'ahooks'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import {
-  generateTotpCode,
-  totpRemaining,
-  type TotpConfig,
-} from '@/services/nexthubx-totp'
+import { fetchTotpCode } from '@/services/nexthubx-api'
 import { showNotice } from '@/services/notice-service'
 
 const PLACEHOLDER = '— — —'
@@ -28,41 +24,53 @@ function formatCode(code: string): string {
 }
 
 /**
- * 账号卡里的 2FA 动态码字段:用 sync 下发的 secret 在本机实时算 TOTP 码,
- * 像手机 authenticator 一样每 30s 滚动 + 倒计时,可一键复制。
+ * 账号卡里的 2FA 动态码字段:**算法在服务端**,这里只从 /api/client/totp 拉算好的 6 位码,
+ * 本地按返回的 remaining 倒计时,过期(归零)即重拉——像手机 authenticator 一样滚动,但密钥不出服务端。
  */
-export const TotpField = ({ totp }: { totp: TotpConfig }) => {
+export const TotpField = ({ clientToken }: { clientToken: string }) => {
   const { t } = useTranslation()
   const [code, setCode] = useState('')
-  const [remaining, setRemaining] = useState(totp.period > 0 ? totp.period : 30)
-  const period = totp.period > 0 ? totp.period : 30
-  // 当前计数器窗口;跨窗口才重算码(每秒只更新倒计时,避免无谓的 crypto 调用)。
-  const counterRef = useRef<number>(-1)
+  const [remaining, setRemaining] = useState(0)
+  const [period, setPeriod] = useState(30)
+  const inFlightRef = useRef(false)
+
+  const load = useCallback(async () => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
+    try {
+      const r = await fetchTotpCode(clientToken)
+      if (r) {
+        setCode(r.code)
+        setPeriod(r.period > 0 ? r.period : 30)
+        setRemaining(r.remaining)
+      } else {
+        setCode('')
+      }
+    } catch {
+      // 瞬时失败:保留旧码,下个 tick 到点会再拉
+    } finally {
+      inFlightRef.current = false
+    }
+  }, [clientToken])
 
   useEffect(() => {
     let alive = true
-    counterRef.current = -1
-    const tick = async () => {
-      const now = Math.floor(Date.now() / 1000)
-      if (alive) setRemaining(totpRemaining(now, period))
-      const counter = Math.floor(now / period)
-      if (counter !== counterRef.current) {
-        counterRef.current = counter
-        try {
-          const c = await generateTotpCode(totp, now)
-          if (alive) setCode(c)
-        } catch {
-          if (alive) setCode('')
+    void load()
+    const id = setInterval(() => {
+      if (!alive) return
+      setRemaining((prev) => {
+        if (prev <= 1) {
+          void load() // 到点重拉:load 返回后会写入新码 + 新 remaining
+          return 0
         }
-      }
-    }
-    void tick()
-    const id = setInterval(() => void tick(), 1000)
+        return prev - 1
+      })
+    }, 1000)
     return () => {
       alive = false
       clearInterval(id)
     }
-  }, [totp, period])
+  }, [load])
 
   const copy = useLockFn(async () => {
     if (!code) return
@@ -87,7 +95,7 @@ export const TotpField = ({ totp }: { totp: TotpConfig }) => {
             sx: { fontFamily: 'monospace', letterSpacing: 2, fontSize: 18 },
             endAdornment: (
               <InputAdornment position="end">
-                {/* 倒计时环:剩余/周期;到点自动滚动到下一个码。 */}
+                {/* 倒计时环:剩余/周期;归零自动重拉下一个码。 */}
                 <Box
                   sx={{ position: 'relative', display: 'inline-flex', mr: 0.5 }}
                 >

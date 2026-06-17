@@ -40,13 +40,8 @@ export interface NexthubxClientState {
   selfBindPersonalEmail?: string | null
   /** 自助绑定 3 段状态文案(sync 下发,后台可编辑);空/缺省字段回退内置 i18n。 */
   selfBindTips?: { pending: string; invited: string; bound: string } | null
-  /** Authenticator(TOTP/2SV)密钥 + 参数(sync 下发);账号卡用它本地实时回显 6 位码。未设/老后端为 null。 */
-  totp?: {
-    secret: string
-    digits: number
-    period: number
-    algorithm: string
-  } | null
+  /** 是否已配置 Authenticator(TOTP)(sync 下发)。密钥不下发,客户端据此渲染并轮询服务端取码。未设/老后端为 false。 */
+  hasTotp?: boolean
   /**
    * 激活后的「连接验证」是否已走完(service 就绪 + TUN 开启 + 出口 IP 一致)。
    * - `false`:激活码已校验通过、配置已导入,但中途某步未完成 → 重开 app 应**从验证流程续跑**,

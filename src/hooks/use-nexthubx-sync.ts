@@ -135,8 +135,8 @@ export const useNexthubxAutoSync = () => {
           data.selfBindPersonalEmail ?? state.selfBindPersonalEmail,
         // 自助绑定 3 段文案:缺省(老后端/非自助)保留旧值,避免误清空
         selfBindTips: data.selfBindTips ?? state.selfBindTips,
-        // TOTP 密钥:区分 null(运营已清除 → 同步清空)与 undefined(老后端缺省 → 保留旧值)。
-        totp: data.totp !== undefined ? data.totp : state.totp,
+        // 是否已配置 TOTP:缺省(老后端)保留旧值,避免误隐藏 2FA 区。
+        hasTotp: data.hasTotp ?? state.hasTotp,
         // 保留验证完成标志:同步不应把它清掉(否则会误触发重开后重跑验证)
         setupComplete: state.setupComplete,
       }

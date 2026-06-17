@@ -107,16 +107,15 @@ export interface SyncActiveResult {
   selfBindPersonalEmail?: string | null
   /** 自助绑定 3 段状态文案(运营后台可编辑,按 bindStatus 显示);缺省/null 或空字段时客户端回退内置 i18n。 */
   selfBindTips?: { pending: string; invited: string; bound: string } | null
-  /** Authenticator(TOTP/2SV)密钥 + 参数;运营在后台录入后下发,客户端账号卡本地回显 6 位码。未设/老后端为 null。 */
-  totp?: TotpConfig | null
+  /** 是否已配置 Authenticator(TOTP)。**密钥不下发**——算法在服务端,客户端据此渲染并轮询 /api/client/totp 取码。 */
+  hasTotp?: boolean
 }
 
-/** TOTP 配置(随 sync 下发;secret 为 Base32)。客户端用 Web Crypto 本地算码,像手机 authenticator。 */
-export interface TotpConfig {
-  secret: string
-  digits: number
+/** GET /api/client/totp 返回:服务端算好的当前码 + 周期 + 剩余秒。 */
+export interface TotpCode {
+  code: string
   period: number
-  algorithm: string
+  remaining: number
 }
 
 export type SyncResult =
@@ -227,6 +226,33 @@ export async function syncClient(
     return { status: 'revoked' }
   }
   return { status: 'active', data: data as SyncActiveResult }
+}
+
+/**
+ * 取当前 2FA(TOTP)码:GET /api/client/totp(算法在服务端,客户端只拿 6 位码 + 倒计时)。
+ *   Authorization: Bearer <clientToken> + X-Device-Id(鉴权同 sync)
+ * - 200 → { code, period, remaining }
+ * - 404 → null(该席位未配置 2FA)
+ * - 其他非 2xx → 抛错(调用方保留旧码、下次重试)
+ */
+export async function fetchTotpCode(
+  clientToken: string,
+): Promise<TotpCode | null> {
+  const userAgent = await buildUserAgent()
+  const response = await fetch(`${NEXTHUBX_API_BASE}/api/client/totp`, {
+    method: 'GET',
+    connectTimeout: REQUEST_TIMEOUT_MS,
+    headers: {
+      Authorization: `Bearer ${clientToken}`,
+      'User-Agent': userAgent,
+      'X-Device-Id': await ensureDeviceId(),
+    },
+  })
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error(`Totp fetch failed with status ${response.status}`)
+  }
+  return (await response.json()) as TotpCode
 }
 
 export type ConfirmBindResult =

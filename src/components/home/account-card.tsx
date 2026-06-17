@@ -784,10 +784,11 @@ export const AccountCard = () => {
                 }}
               />
 
-              {/* 2FA 动态码:运营给该账号录入 Authenticator 密钥后随 sync 下发,这里像手机 authenticator
-                  一样本机实时算码 + 倒计时。登 Google 被要求两步验证时填它。未设则不渲染。 */}
-              {clientState.totp?.secret ? (
-                <TotpField totp={clientState.totp} />
+              {/* 2FA 动态码:运营给该账号录入 Authenticator 密钥后,sync 回 hasTotp=true。
+                  算法在服务端,这里只从 /api/client/totp 拉算好的 6 位码 + 倒计时。登 Google
+                  被要求两步验证时填它。未配置则不渲染。 */}
+              {clientState.hasTotp ? (
+                <TotpField clientToken={clientState.clientToken} />
               ) : null}
 
               {/* creator(manager@域 主账号):无邀请绑定,激活后用上方账号密码以 Continue with Google
