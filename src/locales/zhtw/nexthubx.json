@@ -110,7 +110,11 @@
       "revoked": "Seat revoked, please reactivate",
       "lastSync": "Last synced"
     },
-    "activatedEmail": "Activated email {{email}}"
+    "activatedEmail": "Activated email {{email}}",
+    "totp": {
+      "title": "2FA 動態碼",
+      "hint": "Google 提示兩步驗證時,填入此 6 位動態碼。"
+    }
   },
   "sync": {
     "configUpdated": "Proxy configuration updated",

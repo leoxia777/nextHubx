@@ -250,6 +250,10 @@ export interface TranslationResources {
           syncing: string
         }
         title: string
+        totp: {
+          hint: string
+          title: string
+        }
         usage: {
           body: string
           title: string

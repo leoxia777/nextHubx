@@ -110,7 +110,11 @@
       "revoked": "Seat revoked, please reactivate",
       "lastSync": "Last synced"
     },
-    "activatedEmail": "Activated email {{email}}"
+    "activatedEmail": "Activated email {{email}}",
+    "totp": {
+      "title": "2FA code",
+      "hint": "When Google asks for 2-step verification, enter this code."
+    }
   },
   "sync": {
     "configUpdated": "Proxy configuration updated",

@@ -107,6 +107,16 @@ export interface SyncActiveResult {
   selfBindPersonalEmail?: string | null
   /** 自助绑定 3 段状态文案(运营后台可编辑,按 bindStatus 显示);缺省/null 或空字段时客户端回退内置 i18n。 */
   selfBindTips?: { pending: string; invited: string; bound: string } | null
+  /** Authenticator(TOTP/2SV)密钥 + 参数;运营在后台录入后下发,客户端账号卡本地回显 6 位码。未设/老后端为 null。 */
+  totp?: TotpConfig | null
+}
+
+/** TOTP 配置(随 sync 下发;secret 为 Base32)。客户端用 Web Crypto 本地算码,像手机 authenticator。 */
+export interface TotpConfig {
+  secret: string
+  digits: number
+  period: number
+  algorithm: string
 }
 
 export type SyncResult =

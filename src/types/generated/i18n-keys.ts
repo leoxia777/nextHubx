@@ -203,6 +203,8 @@ export const translationKeys = [
   'nexthubx.account.syncStatus.revoked',
   'nexthubx.account.syncStatus.lastSync',
   'nexthubx.account.activatedEmail',
+  'nexthubx.account.totp.title',
+  'nexthubx.account.totp.hint',
   'nexthubx.sync.configUpdated',
   'nexthubx.sync.revokedNotice',
   'nexthubx.sync.failed',

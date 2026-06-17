@@ -61,6 +61,7 @@ import {
 import { showNotice } from '@/services/notice-service'
 
 import { EnhancedCard } from './enhanced-card'
+import { TotpField } from './totp-field'
 
 /**
  * Home「账号」卡片(最终 spec ① + 分步激活重构)。
@@ -782,6 +783,12 @@ export const AccountCard = () => {
                   },
                 }}
               />
+
+              {/* 2FA 动态码:运营给该账号录入 Authenticator 密钥后随 sync 下发,这里像手机 authenticator
+                  一样本机实时算码 + 倒计时。登 Google 被要求两步验证时填它。未设则不渲染。 */}
+              {clientState.totp?.secret ? (
+                <TotpField totp={clientState.totp} />
+              ) : null}
 
               {/* creator(manager@域 主账号):无邀请绑定,激活后用上方账号密码以 Continue with Google
                   登第三方创建 team(分步引导),建好后本人点「确认已建团」→ bound。bound 后落到下方使用说明。 */}

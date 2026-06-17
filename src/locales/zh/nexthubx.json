@@ -110,7 +110,11 @@
       "revoked": "席位已失效，请重新激活",
       "lastSync": "上次同步"
     },
-    "activatedEmail": "激活邮箱 {{email}}"
+    "activatedEmail": "激活邮箱 {{email}}",
+    "totp": {
+      "title": "2FA 动态码",
+      "hint": "Google 提示两步验证时,填入此 6 位动态码。"
+    }
   },
   "sync": {
     "configUpdated": "代理配置已更新",
