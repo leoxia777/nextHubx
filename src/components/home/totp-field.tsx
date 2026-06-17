@@ -1,10 +1,11 @@
-import { ContentCopyRounded } from '@mui/icons-material'
+import { ContentCopyRounded, ErrorOutlineRounded } from '@mui/icons-material'
 import {
   Box,
   CircularProgress,
   IconButton,
   InputAdornment,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
@@ -83,64 +84,66 @@ export const TotpField = ({ clientToken }: { clientToken: string }) => {
   })
 
   return (
-    <Box>
-      <TextField
-        fullWidth
-        size="small"
-        label={t('nexthubx.account.totp.title')}
-        value={code ? formatCode(code) : PLACEHOLDER}
-        slotProps={{
-          input: {
-            readOnly: true,
-            sx: { fontFamily: 'monospace', letterSpacing: 2, fontSize: 18 },
-            endAdornment: (
-              <InputAdornment position="end">
-                {/* 倒计时环:剩余/周期;归零自动重拉下一个码。 */}
+    <TextField
+      fullWidth
+      size="small"
+      label={t('nexthubx.account.totp.title')}
+      value={code ? formatCode(code) : PLACEHOLDER}
+      slotProps={{
+        input: {
+          readOnly: true,
+          sx: { fontFamily: 'monospace', letterSpacing: 2, fontSize: 18 },
+          endAdornment: (
+            <InputAdornment position="end">
+              {/* ❗紧跟在码后:hover 提示登录遇手机验证时怎么改用动态码。 */}
+              <Tooltip
+                title={t('nexthubx.account.totp.hint')}
+                arrow
+                enterTouchDelay={0}
+              >
+                <ErrorOutlineRounded
+                  fontSize="small"
+                  sx={{ color: 'text.secondary', mr: 0.5, cursor: 'help' }}
+                />
+              </Tooltip>
+              {/* 倒计时环:剩余/周期;归零自动重拉下一个码。 */}
+              <Box
+                sx={{ position: 'relative', display: 'inline-flex', mr: 0.5 }}
+              >
+                <CircularProgress
+                  variant="determinate"
+                  value={(remaining / period) * 100}
+                  size={22}
+                  thickness={5}
+                  color={remaining <= 5 ? 'warning' : 'primary'}
+                />
                 <Box
-                  sx={{ position: 'relative', display: 'inline-flex', mr: 0.5 }}
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
-                  <CircularProgress
-                    variant="determinate"
-                    value={(remaining / period) * 100}
-                    size={22}
-                    thickness={5}
-                    color={remaining <= 5 ? 'warning' : 'primary'}
-                  />
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ fontSize: 10 }}>
-                      {remaining}
-                    </Typography>
-                  </Box>
+                  <Typography variant="caption" sx={{ fontSize: 10 }}>
+                    {remaining}
+                  </Typography>
                 </Box>
-                <IconButton
-                  edge="end"
-                  size="small"
-                  disabled={!code}
-                  onClick={() => void copy()}
-                  title={t('nexthubx.account.copy')}
-                >
-                  <ContentCopyRounded fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ),
-          },
-        }}
-      />
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ mt: 0.5, display: 'block' }}
-      >
-        {t('nexthubx.account.totp.hint')}
-      </Typography>
-    </Box>
+              </Box>
+              <IconButton
+                edge="end"
+                size="small"
+                disabled={!code}
+                onClick={() => void copy()}
+                title={t('nexthubx.account.copy')}
+              >
+                <ContentCopyRounded fontSize="small" />
+              </IconButton>
+            </InputAdornment>
+          ),
+        },
+      }}
+    />
   )
 }

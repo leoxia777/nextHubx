@@ -113,7 +113,7 @@
     "activatedEmail": "Activated email {{email}}",
     "totp": {
       "title": "2FA code",
-      "hint": "When Google asks for 2-step verification, enter this code."
+      "hint": "If sign-in asks to verify a phone number: tap \"Try another way\", choose \"Get a verification code from the authenticator app\", then enter this 6-digit code."
     }
   },
   "sync": {
