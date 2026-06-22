@@ -20,7 +20,7 @@ import { fetch } from '@tauri-apps/plugin-http'
  * 订阅 /sub 与 VLESS 数据面属「订阅层」(hub4cc.com),在下发的 clash 配置里(server_domain),与此分离。
  * 旧客户端用的 gate.hub4cc.com 仍由网关同时服务 /api,故升级不影响存量。
  */
-export const NEXTHUBX_API_BASE = 'https://gate.nexthubx.com'
+export const NEXTHUBX_API_BASE = 'https://gate.nexthubx.io'
 
 const REQUEST_TIMEOUT_MS = 15_000
 
