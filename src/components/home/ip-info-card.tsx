@@ -29,6 +29,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useClashVergeGate } from '@/hooks/use-clash-verge-gate'
 import { useIpInfoQuery } from '@/hooks/use-ip-info'
 import { useNexthubxExitGuard } from '@/hooks/use-nexthubx-exit-guard'
 import { requestImmediateNexthubxSync } from '@/hooks/use-nexthubx-sync'
@@ -116,7 +117,14 @@ export const IpInfoCard = () => {
     remainingSeconds: IP_REFRESH_SECONDS,
   })
 
-  const { data: ipInfo, error, isLoading, refetch: mutate } = useIpInfoQuery()
+  // CV 冲突时停查 IP(避免在 CV 抢网时去查/卡住转圈);关停后自动恢复。与账号卡共用同一检测。
+  const { cvBlock } = useClashVergeGate()
+  const {
+    data: ipInfo,
+    error,
+    isLoading,
+    refetch: mutate,
+  } = useIpInfoQuery({ enabled: !cvBlock })
 
   // 出口 IP 自动比对(无需用户确认),走共享守卫(防误报 5 条件 + 后台通知):
   // - 一致 → 绿色「出口匹配」标;
@@ -261,6 +269,18 @@ export const IpInfoCard = () => {
   let mainElement: React.ReactElement
 
   switch (true) {
+    case !!cvBlock:
+      // CV 冲突中:不查 IP,提示去账号卡「一键关停」(关停后 cvBlock 清空,IP 查询自动恢复)。
+      mainElement = (
+        <Alert
+          severity="warning"
+          variant="outlined"
+          sx={{ fontSize: '0.8rem', alignItems: 'center' }}
+        >
+          {t('nexthubx.clashVergeConflict.title')}
+        </Alert>
+      )
+      break
     case isLoading:
       mainElement = (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

@@ -316,9 +316,13 @@ pub fn stop_official_clash_verge() -> Result<(), String> {
         return Ok(());
     }
 
-    // ③ CV 在运行 → 提权一次性杀:bootout root 特权服务(否则服务模式下核心被秒级复活、
-    //    pkill 永远赢不了)+ pkill 核心 + GUI。`|| true` 容忍未加载 / 无匹配进程。
-    let sh = "/bin/launchctl bootout system/io.github.clash-verge-rev.clash-verge-rev.service 2>/dev/null || true; \
+    // ③ CV 在运行 → 提权一次性处理(只弹一个密码框):
+    //    - `launchctl disable` 系统服务:**持久禁用**,重启后 launchd 也不再自动加载该服务/拉起 TUN
+    //      (不删 app、不删 plist;以后想恢复用 `launchctl enable` 即可)。这是「一键关停=永久生效」的关键。
+    //    - `bootout` 卸载当前会话已加载的服务(否则服务模式下核心被秒级复活、pkill 永远赢不了)。
+    //    - `pkill` 核心 + GUI。`|| true` 容忍未加载 / 无匹配进程。
+    let sh = "/bin/launchctl disable system/io.github.clash-verge-rev.clash-verge-rev.service 2>/dev/null || true; \
+              /bin/launchctl bootout system/io.github.clash-verge-rev.clash-verge-rev.service 2>/dev/null || true; \
               /usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/verge-mihomo' || true; \
               /usr/bin/pkill -f 'Clash Verge.app/Contents/MacOS/clash-verge' || true";
     let script = format!("do shell script \"{sh}\" with administrator privileges");

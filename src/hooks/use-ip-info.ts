@@ -10,10 +10,12 @@ import { getIpInfo } from '@/services/api'
 
 export const IP_INFO_CACHE_KEY = 'cv_ip_info_cache'
 
-export function useIpInfoQuery() {
+export function useIpInfoQuery(opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [IP_INFO_CACHE_KEY],
     queryFn: getIpInfo,
+    // CV 冲突时由调用方传 enabled=false 停查(账号卡 + IP 卡共用同一 query,需都传才真停)。
+    enabled: opts?.enabled ?? true,
     staleTime: Infinity,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,

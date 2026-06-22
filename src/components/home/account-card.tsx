@@ -29,6 +29,7 @@ import { useLockFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useClashVergeGate } from '@/hooks/use-clash-verge-gate'
 import { useIpInfoQuery } from '@/hooks/use-ip-info'
 import { useNexthubxExitGuard } from '@/hooks/use-nexthubx-exit-guard'
 import {
@@ -39,9 +40,8 @@ import { useServiceInstaller } from '@/hooks/use-service-installer'
 import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
 import {
-  detectOfficialClashVerge,
-  detectOfficialClashVergeAutostart,
   isServiceAvailable,
+  restartCore,
   stopOfficialClashVerge,
 } from '@/services/cmds'
 import {
@@ -105,15 +105,15 @@ export const AccountCard = () => {
   const [verifyPhase, setVerifyPhase] = useState<VerifyPhase | null>(null)
   const [serviceFailures, setServiceFailures] = useState(0)
   const [installing, setInstalling] = useState(false)
-  // 激活前门控:检测到官方 Clash Verge 正在运行 / 开机自启未关时,记录原因并阻断激活。
-  const [cvBlock, setCvBlock] = useState<{
-    running: boolean
-    autostart: boolean
-  } | null>(null)
+  // 官方 Clash Verge 冲突门控:共享 hook(7s 轮询 running/autostart),账号卡与 IP 卡共用一份。
+  // CV 冲突时:阻断激活(onActivate)+ 不启动出口校验(下方 resume effect)+ IP 查询禁用,只显「一键关停」。
+  const { cvBlock, recheck: recheckCvGate } = useClashVergeGate()
 
-  // 验证中持续轮询实际出口 IP,交给共享守卫做比对(防误报 5 条件)
+  // 验证中持续轮询实际出口 IP,交给共享守卫做比对(防误报 5 条件);CV 冲突时停查(enabled=!cvBlock),关停后恢复。
   const verifying = verifyPhase !== null
-  const { data: ipInfo, refetch: refetchIp } = useIpInfoQuery()
+  const { data: ipInfo, refetch: refetchIp } = useIpInfoQuery({
+    enabled: !cvBlock,
+  })
   const { status: exitStatus, prolonged: exitProlonged } = useNexthubxExitGuard(
     { actualIp: ipInfo?.ip },
   )
@@ -205,24 +205,6 @@ export const AccountCard = () => {
     [verge, mutateVerge, patchVerge],
   )
 
-  // 激活前门控:检测官方 Clash Verge 是否「正在运行」或「开机自启未关」。
-  // 任一命中 → 记录到 cvBlock(渲染指引 + 阻断激活),清空则放行。返回是否通过。
-  // 说明:CV 的 TUN 开关无法直接读;但「CV 未运行」即保证其 TUN 不活跃(退出=关 TUN),
-  // 自启则查其 LaunchAgent。两者皆否 → CV 现在和重启后都不会抢占网络。
-  const checkClashVergeGate = useCallback(async (): Promise<boolean> => {
-    const [running, autostart] = await Promise.all([
-      detectOfficialClashVerge(),
-      detectOfficialClashVergeAutostart(),
-    ])
-    void nxDebug('gate.check', { cvRunning: running, cvAutostart: autostart })
-    if (running || autostart) {
-      setCvBlock({ running, autostart })
-      return false
-    }
-    setCvBlock(null)
-    return true
-  }, [])
-
   const [stoppingCv, setStoppingCv] = useState(false)
   // 一键关停官方 Clash Verge:杀掉其 root 核心 + GUI(macOS 弹一次系统密码),再重新检测放行。
   // CV 服务模式下退 GUI 核心仍由 root 服务托管常驻、用户停不掉,故提供此入口。
@@ -233,8 +215,24 @@ export const AccountCard = () => {
       // 不再用「是否运行」守门——否则「CV 已停但自启还开」会被跳过、门控永远清不掉(stop 内部自己判断:
       // 没运行就只关自启、不白弹密码)。
       await stopOfficialClashVerge()
-      const ok = await checkClashVergeGate()
-      if (ok) showNotice.success('nexthubx.clashVergeConflict.forceStopOk')
+      const g = (await recheckCvGate()).data
+      const ok = !(g?.running || g?.autostart)
+      if (ok) {
+        showNotice.success('nexthubx.clashVergeConflict.forceStopOk')
+        // 自愈:CV 之前可能在 NextHubX 启动时抢占端口/TUN,导致本端 TUN 起坏(自身流量走直连、出口校验过不了)。
+        // CV 已停 → 重启本端核心,重建干净的 TUN + auto-route;给核心起 TUN 留几秒,再重查出口 IP + 触发同步,
+        // 让出口校验自动恢复,无需用户手动退重开。
+        try {
+          await restartCore()
+          void nxDebug('gate.forceStop.selfHeal', { restartedCore: true })
+        } catch (e) {
+          void nxDebug('gate.forceStop.selfHeal.fail', errInfo(e))
+        }
+        setTimeout(() => {
+          void refetchIp()
+          requestImmediateNexthubxSync()
+        }, 3000)
+      }
     } catch (err) {
       const code = err instanceof Error ? err.message : String(err)
       void nxDebug('gate.forceStop.fail', errInfo(err))
@@ -354,20 +352,21 @@ export const AccountCard = () => {
       isActivated &&
       clientState?.setupComplete === false &&
       verifyPhase === null &&
-      !reactivating
+      !reactivating &&
+      !cvBlock // CV 冲突时不启动出口校验;一键关停后 cvBlock 清空,本 effect 重跑、自动续跑校验
     ) {
       setServiceFailures(0)
       setVerifyPhase('service')
     }
-  }, [isActivated, clientState?.setupComplete, verifyPhase, reactivating])
+  }, [
+    isActivated,
+    clientState?.setupComplete,
+    verifyPhase,
+    reactivating,
+    cvBlock,
+  ])
 
-  // 持续检测官方 Clash Verge(不分是否已激活):挂载即查 + 每 7s 轮询,命中即在卡片顶部常驻「一键关停」提示,
-  // CV 关掉后自动消失。不再用全局冲突弹窗。激活前的硬阻断仍由 onActivate 内的 checkClashVergeGate 负责。
-  useEffect(() => {
-    void checkClashVergeGate()
-    const timer = setInterval(() => void checkClashVergeGate(), 7000)
-    return () => clearInterval(timer)
-  }, [checkClashVergeGate])
+  // (CV 检测改由共享 hook useClashVergeGate 7s 轮询,账号卡与 IP 卡共用一份,无需本地再轮询。)
 
   // 未激活时加载「被重置」通知:常驻提示是哪个账号被重置(用户不会一脸懵地回到激活页)+ 预填邮箱。
   useEffect(() => {
@@ -391,7 +390,8 @@ export const AccountCard = () => {
 
     // 激活前强制门控:Clash Verge 运行中(TUN/代理活跃)或开机自启未关 → 阻断并展示指引,
     // 待用户关闭后(点「重新检测」通过)才放行,避免激活请求被劫 + 后续 TUN 互相冲突。
-    if (!(await checkClashVergeGate())) {
+    const cvNow = (await recheckCvGate()).data
+    if (cvNow?.running || cvNow?.autostart) {
       return
     }
 
