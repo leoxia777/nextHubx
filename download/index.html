@@ -67,16 +67,16 @@
     <p class="lead">下一代 LLM 触达解决方案 · 安装后使用企业激活码激活即可接入。</p>
 
     <div class="dl">
-      <a class="primary" id="primary" href="https://updates.nexthubx.com/download/latest/NextHubX-win-x64.exe">检测系统中…</a>
+      <a class="primary" id="primary" href="https://updates.nexthubx.io/download/latest/NextHubX-win-x64.exe">检测系统中…</a>
       <span class="alt">
         全部平台:
-        <a id="dlMacArm" href="https://updates.nexthubx.com/download/latest/NextHubX-mac-aarch64.dmg">macOS · Apple Silicon (.dmg)</a>
+        <a id="dlMacArm" href="https://updates.nexthubx.io/download/latest/NextHubX-mac-aarch64.dmg">macOS · Apple Silicon (.dmg)</a>
         &nbsp;·&nbsp;
-        <a id="dlMacX64" href="https://updates.nexthubx.com/download/latest/NextHubX-mac-x64.dmg">macOS · Intel (.dmg)</a>
+        <a id="dlMacX64" href="https://updates.nexthubx.io/download/latest/NextHubX-mac-x64.dmg">macOS · Intel (.dmg)</a>
         &nbsp;·&nbsp;
-        <a id="dlWinX64" href="https://updates.nexthubx.com/download/latest/NextHubX-win-x64.exe">Windows · x64 (.exe)</a>
+        <a id="dlWinX64" href="https://updates.nexthubx.io/download/latest/NextHubX-win-x64.exe">Windows · x64 (.exe)</a>
         &nbsp;·&nbsp;
-        <a id="dlWinArm" href="https://updates.nexthubx.com/download/latest/NextHubX-win-arm64.exe">Windows · ARM64 (.exe)</a>
+        <a id="dlWinArm" href="https://updates.nexthubx.io/download/latest/NextHubX-win-arm64.exe">Windows · ARM64 (.exe)</a>
       </span>
     </div>
 
@@ -113,7 +113,8 @@
 
   <script>
     (function () {
-      var UP = "https://updates.nexthubx.com/";
+      var m = location.hostname.match(/nexthubx\.(io|com)$/);
+      var UP = "https://updates.nexthubx." + (m ? m[1] : "io") + "/";
       var L = UP + "download/latest/";
       // 4 个架构固定直链(每版覆盖、no-cache,始终最新)。架构无法可靠探测时,
       // 主按钮给最可能的默认(mac→Apple Silicon / win→x64),其余在「全部平台」全部列出供手选。
@@ -123,6 +124,11 @@
         winX64: L + "NextHubX-win-x64.exe",
         winArm: L + "NextHubX-win-arm64.exe",
       };
+      // 备用链接也按当前域名自适应(.io / .com)
+      document.getElementById("dlMacArm").href = u.macArm;
+      document.getElementById("dlMacX64").href = u.macX64;
+      document.getElementById("dlWinX64").href = u.winX64;
+      document.getElementById("dlWinArm").href = u.winArm;
       var ua = navigator.userAgent || "";
       var isMac = /Mac/i.test(ua) && !/iPhone|iPad/i.test(ua);
       var p = document.getElementById("primary");
