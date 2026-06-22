@@ -22,7 +22,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router'
 
 import nexthubxLogo from '@/assets/nexthubx-logo.png'
 import { BaseErrorBoundary } from '@/components/base'
-import { ClashVergeConflictDialog } from '@/components/layout/clash-verge-conflict-dialog'
 import { ExitMismatchGuard } from '@/components/layout/exit-mismatch-guard'
 import { LayoutItem } from '@/components/layout/layout-item'
 import { LayoutTraffic } from '@/components/layout/layout-traffic'
@@ -267,8 +266,7 @@ const Layout = () => {
     <ThemeProvider theme={theme}>
       {/* 左侧底部窗口控制按钮 */}
       <NoticeManager position={verge?.notice_position} />
-      {/* 官方 Clash Verge 冲突提醒(启动检测 + 后台轮询) */}
-      <ClashVergeConflictDialog />
+      {/* 官方 Clash Verge 冲突:不再用全局弹窗,改由账号卡顶部常驻「一键关停」提示(只按 CV 检测显隐)。 */}
       {/* 出口 IP 不一致全窗口警示(激活后持续监测,后台通知 + 唤起窗口) */}
       <ExitMismatchGuard />
       {/* 注:首启动 ServiceGate 已移除,Service 检查/安装移至激活流程(account-card) */}

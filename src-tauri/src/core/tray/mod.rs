@@ -301,15 +301,13 @@ impl Tray {
         let tun_text = clash_verge_i18n::t!("tray.tooltip.tun");
         let profile_text = clash_verge_i18n::t!("tray.tooltip.profile");
 
-        let v = env!("CARGO_PKG_VERSION");
-        let reassembled_version = v.split_once('+').map_or_else(
-            || v.into(),
-            |(main, rest)| format!("{main}+{}", rest.split('.').next().unwrap_or("")),
-        );
+        // 用 app 版本(tauri.conf,如 0.4.5)+ NextHubX 品牌,而非 env!("CARGO_PKG_VERSION")
+        // (= 上游 Clash Verge Rev 基线 2.5.2),避免托盘悬停显示成「Clash Verge 2.5.2」。
+        let app_version = app_handle.package_info().version.to_string();
 
         let tooltip = format!(
-            "Clash Verge {}\n{}: {}\n{}: {}\n{}: {}",
-            reassembled_version,
+            "NextHubX {}\n{}: {}\n{}: {}\n{}: {}",
+            app_version,
             sys_proxy_text,
             switch_str(system_proxy),
             tun_text,
@@ -640,7 +638,8 @@ async fn create_tray_menu(
         .unwrap_or("default");
     let show_outbound_modes_inline = verge_settings.tray_inline_outbound_modes.unwrap_or(false);
 
-    let version = env!("CARGO_PKG_VERSION");
+    // 托盘菜单「版本」项也用 app 版本(0.4.x),而非 CARGO_PKG_VERSION(上游 2.5.2)。
+    let version = app_handle.package_info().version.to_string();
 
     let hotkeys = create_hotkeys(&verge_settings.hotkeys);
 

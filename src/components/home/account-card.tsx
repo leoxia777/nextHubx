@@ -6,7 +6,6 @@ import {
   HourglassTopRounded,
   MarkEmailReadRounded,
   RefreshRounded,
-  RocketLaunchRounded,
   ShieldRounded,
   SupportAgentRounded,
   VisibilityOffRounded,
@@ -362,10 +361,13 @@ export const AccountCard = () => {
     }
   }, [isActivated, clientState?.setupComplete, verifyPhase, reactivating])
 
-  // 显示激活表单时主动检测一次 Clash Verge 冲突,提前把门控指引展示出来(无需等用户点激活)。
+  // 持续检测官方 Clash Verge(不分是否已激活):挂载即查 + 每 7s 轮询,命中即在卡片顶部常驻「一键关停」提示,
+  // CV 关掉后自动消失。不再用全局冲突弹窗。激活前的硬阻断仍由 onActivate 内的 checkClashVergeGate 负责。
   useEffect(() => {
-    if (showForm) void checkClashVergeGate()
-  }, [showForm, checkClashVergeGate])
+    void checkClashVergeGate()
+    const timer = setInterval(() => void checkClashVergeGate(), 7000)
+    return () => clearInterval(timer)
+  }, [checkClashVergeGate])
 
   // 未激活时加载「被重置」通知:常驻提示是哪个账号被重置(用户不会一脸懵地回到激活页)+ 预填邮箱。
   useEffect(() => {
@@ -570,6 +572,35 @@ export const AccountCard = () => {
         ) : null
       }
     >
+      {/* 官方 Clash Verge 冲突:只按 CV 检测结果显隐,常驻卡片顶部(无论是否已激活),不再走全局弹窗。
+          带「一键关停」直接关掉其残留进程 + 自启;关掉后下一轮轮询 cvBlock 清空,提示自动消失。 */}
+      {cvBlock && (
+        <Alert
+          severity="warning"
+          icon={<WarningAmberRounded fontSize="inherit" />}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              variant="outlined"
+              disabled={stoppingCv}
+              startIcon={
+                stoppingCv ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : undefined
+              }
+              onClick={() => void onForceStopCv()}
+            >
+              {stoppingCv
+                ? t('nexthubx.clashVergeConflict.forceStopping')
+                : t('nexthubx.clashVergeConflict.forceStop')}
+            </Button>
+          }
+          sx={{ whiteSpace: 'pre-line', alignItems: 'flex-start', mb: 2 }}
+        >
+          {`${t('nexthubx.clashVergeConflict.runningBody')}\n\n${t('nexthubx.clashVergeConflict.forceStopHint')}`}
+        </Alert>
+      )}
       {verifying ? (
         renderVerifying()
       ) : showForm ? (
@@ -577,36 +608,7 @@ export const AccountCard = () => {
           <Typography variant="body2" color="text.secondary">
             {t('nexthubx.activate.subtitle')}
           </Typography>
-          {/* CV 冲突是激活的硬前置:有冲突时**优先且独占**展示(不关掉根本没法激活)。
-              重置通知此刻不可操作,先不显示,待 CV 关停(cvBlock 清空)后再出现,
-              避免两个 warning 同时堆叠、用户不知道先做哪个。 */}
-          {cvBlock && (
-            <Alert
-              severity="warning"
-              icon={<WarningAmberRounded fontSize="inherit" />}
-              action={
-                <Button
-                  color="inherit"
-                  size="small"
-                  variant="outlined"
-                  disabled={stoppingCv}
-                  startIcon={
-                    stoppingCv ? (
-                      <CircularProgress size={14} color="inherit" />
-                    ) : undefined
-                  }
-                  onClick={() => void onForceStopCv()}
-                >
-                  {stoppingCv
-                    ? t('nexthubx.clashVergeConflict.forceStopping')
-                    : t('nexthubx.clashVergeConflict.forceStop')}
-                </Button>
-              }
-              sx={{ whiteSpace: 'pre-line', alignItems: 'flex-start' }}
-            >
-              {`${t('nexthubx.clashVergeConflict.blockingActivate')}\n\n${t('nexthubx.clashVergeConflict.forceStopHint')}`}
-            </Alert>
-          )}
+          {/* 重置通知:CV 冲突提示已上移到卡片顶部;此处仍在 cvBlock 时不显,避免两个 warning 抢注意力。 */}
           {resetNotice && !cvBlock && (
             <Alert
               severity="warning"
@@ -680,13 +682,13 @@ export const AccountCard = () => {
               })}
             </Typography>
           )}
-          {/* 自助绑定按角色 + team 状态分流:
-              - member + none(待邀请):只提示联系主管、**不显账号密码**(还用不上);
-              - creator:始终显示账号密码(本人要用 manager@域 登第三方建 team),下方走「建团」引导;
-              - invite_sent / bound / 非自助席位:显示账号密码。文案优先取后端可编辑 selfBindTips。 */}
+          {/* 自助绑定按角色 + team 状态分流(账号密码门控在服务端,客户端据此渲染):
+              - member + none(待邀请):提示联系主管、**不显账号密码**(还用不上);
+              - creator 未 bound(运营建团中):提示等待运营开通、**不显账号密码**(manager 账号绑订阅卡,运营全程建好再移交);
+              - member invite_sent / 任意 bound / 非自助席位:显示账号密码。文案优先取后端可编辑 selfBindTips。 */}
           {clientState.isSelfBind &&
-          !isCreator &&
-          clientState.bindStatus === 'none' ? (
+          ((!isCreator && clientState.bindStatus === 'none') ||
+            (isCreator && clientState.bindStatus !== 'bound')) ? (
             <Alert
               severity="info"
               variant="outlined"
@@ -694,17 +696,23 @@ export const AccountCard = () => {
               sx={{ alignItems: 'flex-start' }}
             >
               <Typography variant="subtitle2">
-                {t('nexthubx.account.bind.pendingTitle')}
+                {t(
+                  isCreator
+                    ? 'nexthubx.account.bind.creatorTitle'
+                    : 'nexthubx.account.bind.pendingTitle',
+                )}
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ mb: 1, whiteSpace: 'pre-line' }}
               >
-                {withPemail(
-                  clientState.selfBindTips?.pending?.trim() ||
-                    t('nexthubx.account.bind.pendingBody'),
-                )}
+                {isCreator
+                  ? withPemail(t('nexthubx.account.bind.creatorBody'))
+                  : withPemail(
+                      clientState.selfBindTips?.pending?.trim() ||
+                        t('nexthubx.account.bind.pendingBody'),
+                    )}
               </Typography>
               <Button
                 size="small"
@@ -791,57 +799,8 @@ export const AccountCard = () => {
                 <TotpField clientToken={clientState.clientToken} />
               ) : null}
 
-              {/* creator(manager@域 主账号):无邀请绑定,激活后用上方账号密码以 Continue with Google
-                  登第三方创建 team(分步引导),建好后本人点「确认已建团」→ bound。bound 后落到下方使用说明。 */}
-              {clientState.isSelfBind &&
-                isCreator &&
-                clientState.bindStatus !== 'bound' && (
-                  <Alert
-                    severity="info"
-                    variant="outlined"
-                    icon={<RocketLaunchRounded fontSize="inherit" />}
-                    sx={{ alignItems: 'flex-start' }}
-                  >
-                    <Typography variant="subtitle2">
-                      {t('nexthubx.account.bind.creatorTitle')}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1, whiteSpace: 'pre-line' }}
-                    >
-                      {t('nexthubx.account.bind.creatorBody')}
-                    </Typography>
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={confirmingBind}
-                        startIcon={
-                          confirmingBind ? (
-                            <CircularProgress size={14} color="inherit" />
-                          ) : (
-                            <CheckCircleRounded />
-                          )
-                        }
-                        onClick={() => void onConfirmBound()}
-                      >
-                        {confirmingBind
-                          ? t('nexthubx.account.bind.confirming')
-                          : t('nexthubx.account.bind.creatorConfirm')}
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="text"
-                        color="inherit"
-                        startIcon={<RefreshRounded fontSize="small" />}
-                        onClick={onRefreshBind}
-                      >
-                        {t('nexthubx.account.bind.refresh')}
-                      </Button>
-                    </Stack>
-                  </Alert>
-                )}
+              {/* creator(manager@域)的建团/确认收归运营侧:未 bound 时根本不显账号密码(上面走等待态),
+                  bound 后才进入本分支显示账号密码 + 下方 bound 提示。故此处不再有「建团引导/确认」按钮。 */}
 
               {/* invite_sent / bound:在账号密码下方展示对应状态提示(文案优先取后端 selfBindTips,缺省回退 i18n)。 */}
               {clientState.isSelfBind &&
