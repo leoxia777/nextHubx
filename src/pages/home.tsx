@@ -1,11 +1,12 @@
-import { HelpOutlineRounded } from '@mui/icons-material'
+import { HelpOutlineRounded, NetworkCheckRounded } from '@mui/icons-material'
 import { Box, Grid, IconButton, Skeleton, Tooltip } from '@mui/material'
 import { useLockFn } from 'ahooks'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BasePage } from '@/components/base'
 import { AccountCard } from '@/components/home/account-card'
+import { DiagnosticsModal } from '@/components/home/diagnostics-modal'
 import { openWebUrl } from '@/services/cmds'
 
 const LazyIpInfoCard = lazy(() =>
@@ -24,6 +25,7 @@ const LazyIpInfoCard = lazy(() =>
  */
 const HomePage = () => {
   const { t } = useTranslation()
+  const [diagOpen, setDiagOpen] = useState(false)
 
   const toGithubDoc = useLockFn(() => {
     return openWebUrl('https://clash-verge-rev.github.io/index.html')
@@ -35,6 +37,15 @@ const HomePage = () => {
       contentStyle={{ padding: 2 }}
       header={
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Tooltip title={t('home.components.diagnostics.title')} arrow>
+            <IconButton
+              onClick={() => setDiagOpen(true)}
+              size="small"
+              color="inherit"
+            >
+              <NetworkCheckRounded />
+            </IconButton>
+          </Tooltip>
           <Tooltip title={t('home.page.tooltips.manual')} arrow>
             <IconButton onClick={toGithubDoc} size="small" color="inherit">
               <HelpOutlineRounded />
@@ -53,6 +64,7 @@ const HomePage = () => {
           </Suspense>
         </Grid>
       </Grid>
+      <DiagnosticsModal open={diagOpen} onClose={() => setDiagOpen(false)} />
     </BasePage>
   )
 }

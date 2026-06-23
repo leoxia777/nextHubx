@@ -77,6 +77,39 @@ export interface TranslationResources {
           }
           title: string
         }
+        diagnostics: {
+          advice: {
+            exitMismatch: string
+            none: string
+            proxyDown: string
+            resyncOnly: string
+            ruleSourceBlocked: string
+          }
+          checks: {
+            domestic: string
+            exitIp: string
+            foreign: string
+            lanFallback: string
+            ruleProviders: string
+            ruleSource: string
+          }
+          detail: {
+            oldConfig: string
+          }
+          rerun: string
+          resync: string
+          running: string
+          summary: {
+            allGood: string
+            domesticFail: string
+            exitMismatch: string
+            oldConfig: string
+            proxyDown: string
+            rulesEmpty: string
+            ruleSourceBlockedOldConfig: string
+          }
+          title: string
+        }
         ipInfo: {
           errors: {
             load: string
