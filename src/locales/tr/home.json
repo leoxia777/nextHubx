@@ -27,6 +27,39 @@
     "title": "Ana Sayfa"
   },
   "components": {
+    "diagnostics": {
+      "title": "One-click Diagnosis",
+      "running": "Running diagnosis…",
+      "rerun": "Re-run",
+      "resync": "Re-sync subscription",
+      "checks": {
+        "lanFallback": "Local fallback direct (private / loopback)",
+        "ruleProviders": "Routing rule-sets loaded",
+        "foreign": "Overseas reachable",
+        "domestic": "Domestic (China) reachable",
+        "ruleSource": "Rule source (skk.moe) reachable",
+        "exitIp": "Exit IP"
+      },
+      "detail": {
+        "oldConfig": "Old config, missing local fallback"
+      },
+      "summary": {
+        "allGood": "Routing looks healthy.",
+        "proxyDown": "Proxy itself is down — even overseas is unreachable.",
+        "rulesEmpty": "Routing rule-sets failed to load — domestic & local traffic falls through to the proxy.",
+        "ruleSourceBlockedOldConfig": "Rule source unreachable and config has no local fallback — domestic / 127 are at risk.",
+        "oldConfig": "Subscription is an old version without local fallback.",
+        "domesticFail": "Config looks fine but domestic is unreachable.",
+        "exitMismatch": "Exit IP differs from your assigned exit."
+      },
+      "advice": {
+        "none": "",
+        "proxyDown": "Check the exit / TUN, or use One-click Stop CV on the account card, then retry.",
+        "resyncOnly": "Re-sync the subscription to pull the latest config, then retry.",
+        "ruleSourceBlocked": "Rule source is blocked. Re-sync to get the new config (it adds local fallback so domestic/127 stay direct).",
+        "exitMismatch": "TUN may not be active or is preempted. Restart the core / stop conflicting Clash Verge, then retry."
+      }
+    },
     "proxyTun": {
       "status": {
         "systemProxyEnabled": "Sistem vekil'i etkinleştirildi, uygulamalarınız vekil üzerinden ağa erişecek",

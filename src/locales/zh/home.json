@@ -27,6 +27,39 @@
     "title": "首页"
   },
   "components": {
+    "diagnostics": {
+      "title": "一键诊断",
+      "running": "诊断中…",
+      "rerun": "重新诊断",
+      "resync": "重新同步订阅",
+      "checks": {
+        "lanFallback": "本地兜底直连(私网 / 回环)",
+        "ruleProviders": "分流规则集加载",
+        "foreign": "国外连通",
+        "domestic": "国内连通",
+        "ruleSource": "规则源(skk.moe)可达",
+        "exitIp": "出口 IP"
+      },
+      "detail": {
+        "oldConfig": "旧配置,缺本地兜底"
+      },
+      "summary": {
+        "allGood": "分流正常。",
+        "proxyDown": "代理本身没起来——连国外都不通。",
+        "rulesEmpty": "分流规则集加载失败——国内与本地流量会落到代理。",
+        "ruleSourceBlockedOldConfig": "规则源不可达且配置无本地兜底——国内 / 127 有风险。",
+        "oldConfig": "订阅是旧版,缺本地兜底。",
+        "domesticFail": "配置正常但国内不通。",
+        "exitMismatch": "出口 IP 与分配的不一致。"
+      },
+      "advice": {
+        "none": "",
+        "proxyDown": "检查出口 / TUN,或在账号卡用「一键关停 CV」后重试。",
+        "resyncOnly": "重新同步订阅拉取最新配置后重试。",
+        "ruleSourceBlocked": "规则源被墙。重新同步拿新配置(已加本地兜底,国内/127 仍直连)。",
+        "exitMismatch": "TUN 可能没生效或被抢占。重启核心 / 关停冲突的 Clash Verge 后重试。"
+      }
+    },
     "proxyTun": {
       "status": {
         "systemProxyEnabled": "系统代理已启用，您的应用将通过代理访问网络",
