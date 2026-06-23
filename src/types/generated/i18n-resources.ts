@@ -96,12 +96,6 @@ export interface TranslationResources {
             timezone: string
             unknown: string
           }
-          sources: {
-            checkManually: string
-            failed: string
-            ratelimited: string
-            title: string
-          }
           title: string
         }
         proxyTun: {
