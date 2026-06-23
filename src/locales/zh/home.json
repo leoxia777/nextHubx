@@ -88,12 +88,6 @@
         "match": "出口匹配",
         "checking": "出口校验中…",
         "mismatch": "当前出口 IP（{{actual}}）与分配的出口（{{expected}}）不一致,可能未正确连接代理或走错出口,请检查连接。"
-      },
-      "sources": {
-        "title": "多源校验",
-        "ratelimited": "限频",
-        "failed": "失败",
-        "checkManually": "自行去查"
       }
     },
     "currentProxy": {

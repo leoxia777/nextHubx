@@ -1,8 +1,10 @@
 import { getName, getVersion } from '@tauri-apps/api/app'
 import { fetch } from '@tauri-apps/plugin-http'
+import { asyncRetry } from 'foxts/async-retry'
+import { extractErrorMessage } from 'foxts/extract-error-message'
 import { once } from 'foxts/once'
 
-import { nxDebug } from '@/services/nexthubx-debug'
+import { errInfo, nxDebug } from '@/services/nexthubx-debug'
 import { debugLog } from '@/utils/debug'
 
 const getUserAgentPromise = once(async () => {
@@ -15,7 +17,7 @@ const getUserAgentPromise = once(async () => {
   }
 })
 // Get current IP and geolocation information （refactored IP detection with service-specific mappings）
-export interface IpInfo {
+interface IpInfo {
   ip: string
   country_code: string
   country: string
@@ -31,28 +33,16 @@ export interface IpInfo {
 
 // IP检测服务配置
 interface ServiceConfig {
-  name: string // 展示名(多源校验列表用)
   url: string
   mapping: (data: any) => IpInfo
-  timeout?: number
-}
-
-// 单源探测结果:用于「多源交叉校验」列表展示
-export type IpProbeStatus = 'ok' | 'ratelimited' | 'failed'
-export interface IpProbeResult {
-  source: string
-  status: IpProbeStatus
-  ip: string | null
-  countryCode: string | null
-  asn: number | null
+  timeout?: number // 保留timeout字段（如有需要）
 }
 
 // 可用的IP检测服务列表及字段映射。
-// 自有源 ip.nexthubx.io 置首(走代理调用即得出口 IP,无第三方频率限制),作为主结果优先来源;
-// 其余第三方作交叉校验,任一限频/失败仅在列表标注,不影响主结果。
+// 自有源 ip.nexthubx.io 置首并**优先**(走代理即得出口 IP、无第三方频率限制);
+// 其余第三方仅作兜底(自有源不可用时回退),保持原有逐个试取首成功的逻辑。
 const IP_CHECK_SERVICES: ServiceConfig[] = [
   {
-    name: 'ip.nexthubx.io',
     url: 'https://ip.nexthubx.io/',
     mapping: (data) => ({
       ip: data.ip || '',
@@ -69,7 +59,6 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
     }),
   },
   {
-    name: 'api.ip.sb',
     url: 'https://api.ip.sb/geoip',
     mapping: (data) => ({
       ip: data.ip || '',
@@ -86,7 +75,6 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
     }),
   },
   {
-    name: 'ipapi.co',
     url: 'https://ipapi.co/json',
     mapping: (data) => ({
       ip: data.ip || '',
@@ -103,7 +91,6 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
     }),
   },
   {
-    name: 'ipapi.is',
     url: 'https://api.ipapi.is/',
     mapping: (data) => ({
       ip: data.ip || '',
@@ -120,7 +107,6 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
     }),
   },
   {
-    name: 'ipwho.is',
     url: 'https://ipwho.is/',
     mapping: (data) => ({
       ip: data.ip || '',
@@ -137,7 +123,6 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
     }),
   },
   {
-    name: 'ip.api.skk.moe',
     url: 'https://ip.api.skk.moe/cf-geoip',
     mapping: (data) => ({
       ip: data.ip || '',
@@ -154,7 +139,6 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
     }),
   },
   {
-    name: 'geojs.io',
     url: 'https://get.geojs.io/v1/ip/geo.json',
     mapping: (data) => ({
       ip: data.ip || '',
@@ -172,106 +156,96 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
   },
 ]
 
-const SERVICE_TIMEOUT = 5000
-
-// 探测单个源,永不抛错;归一成 { info, result }。
-// 限频(429/403)单独标 ratelimited,供 UI 提示「自行去查」;其余失败标 failed。
-async function probeOne(
-  service: ServiceConfig,
-  userAgent: string,
-): Promise<{ info: IpInfo | null; result: IpProbeResult }> {
-  const fail = (
-    status: IpProbeStatus,
-  ): { info: null; result: IpProbeResult } => ({
-    info: null,
-    result: {
-      source: service.name,
-      status,
-      ip: null,
-      countryCode: null,
-      asn: null,
-    },
-  })
-
-  const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => {
-    timeoutController.abort()
-  }, service.timeout || SERVICE_TIMEOUT)
-
-  try {
-    const response = await fetch(service.url, {
-      method: 'GET',
-      signal: timeoutController.signal,
-      connectTimeout: service.timeout || SERVICE_TIMEOUT,
-      headers: { 'User-Agent': userAgent },
-    })
-
-    if (!response.ok) {
-      // 429 Too Many Requests / 部分源超额返回 403 → 视为「限频」
-      return fail(
-        response.status === 429 || response.status === 403
-          ? 'ratelimited'
-          : 'failed',
-      )
-    }
-
-    let data: any
-    try {
-      data = await response.json()
-    } catch {
-      return fail('failed')
-    }
-
-    if (!data || !data.ip) {
-      return fail('failed')
-    }
-
-    const info = service.mapping(data)
-    return {
-      info,
-      result: {
-        source: service.name,
-        status: 'ok',
-        ip: info.ip,
-        countryCode: info.country_code || null,
-        asn: info.asn || null,
-      },
-    }
-  } catch (error) {
-    debugLog(`IP检测源失败: ${service.url}`, error)
-    return fail('failed')
-  } finally {
-    clearTimeout(timeoutId)
-  }
-}
-
-// 获取当前IP和地理位置信息:并发探测所有源,返回主结果 + 各源结果列表(供交叉校验)。
-// 主结果优先取自有源(列表第一个成功的源,即 ip.nexthubx.io 若可用),否则取第一个成功源。
-// 全部失败才抛错(走卡片错误态 + 触发一次直连同步)。
+// 获取当前IP和地理位置信息
 export const getIpInfo = async (): Promise<
-  IpInfo & { lastFetchTs: number; probes: IpProbeResult[] }
+  IpInfo & { lastFetchTs: number }
 > => {
+  // 配置参数
+  const maxRetries = 2
+  const serviceTimeout = 5000
+
+  // 自有源(列表第一个 = ip.nexthubx.io)固定优先试,其余第三方打乱后兜底。
+  // 注:不用 Array.prototype.toSorted(ES2023)——旧 macOS 的 WKWebView 不支持会抛
+  // "toSorted is not a function" 致 IP 检测整条崩。改用 [...].sort 复制后排序(同效、兼容旧内核)。
+  const [primaryService, ...fallbackServices] = IP_CHECK_SERVICES
+  const shuffledServices = [
+    ...(primaryService ? [primaryService] : []),
+    ...[...fallbackServices].sort(() => Math.random() - 0.5),
+  ]
+  void nxDebug('ipcheck.start', { count: shuffledServices.length })
+  let lastError: unknown | null = null
   const userAgent = await getUserAgentPromise()
-  void nxDebug('ipcheck.start', { count: IP_CHECK_SERVICES.length })
+  console.debug('User-Agent for IP detection:', userAgent)
 
-  const settled = await Promise.all(
-    IP_CHECK_SERVICES.map((service) => probeOne(service, userAgent)),
-  )
-  const probes = settled.map((s) => s.result)
+  for (const service of shuffledServices) {
+    debugLog(`尝试IP检测服务: ${service.url}`)
 
-  // settled 保持与 IP_CHECK_SERVICES 同序 → find 命中的就是「最高优先级的成功源」(自有源置首)
-  const primary = settled.find((s) => s.info !== null)?.info ?? null
-  const okCount = probes.filter((p) => p.status === 'ok').length
+    const timeoutController = new AbortController()
+    const timeoutId = setTimeout(() => {
+      timeoutController.abort()
+    }, service.timeout || serviceTimeout)
 
-  if (!primary) {
-    void nxDebug('ipcheck.allfail', { probes })
-    throw new Error('所有IP检测服务都失败')
+    try {
+      return await asyncRetry(
+        async (bail) => {
+          console.debug('Fetching IP information:', service.url)
+
+          const response = await fetch(service.url, {
+            method: 'GET',
+            signal: timeoutController.signal, // AbortSignal.timeout(service.timeout || serviceTimeout),
+            connectTimeout: service.timeout || serviceTimeout,
+            headers: {
+              'User-Agent': userAgent,
+            },
+          })
+
+          if (!response.ok) {
+            return bail(
+              new Error(
+                `IP 检测服务出错，状态码: ${response.status} from ${service.url}`,
+              ),
+            )
+          }
+
+          let data: any
+          try {
+            data = await response.json()
+          } catch {
+            return bail(new Error(`无法解析 JSON 响应 from ${service.url}`))
+          }
+
+          if (data && data.ip) {
+            debugLog(`IP检测成功，使用服务: ${service.url}`)
+            void nxDebug('ipcheck.ok', { ip: data.ip, service: service.url })
+            return Object.assign(service.mapping(data), {
+              // use last fetch success timestamp
+              lastFetchTs: Date.now(),
+            })
+          } else {
+            return bail(new Error(`无效的响应格式 from ${service.url}`))
+          }
+        },
+        {
+          retries: maxRetries,
+          minTimeout: 1000,
+          maxTimeout: 4000,
+          randomize: true,
+        },
+      )
+    } catch (error) {
+      debugLog(`IP检测服务失败: ${service.url}`, error)
+      lastError = error
+    } finally {
+      clearTimeout(timeoutId)
+    }
   }
 
-  void nxDebug('ipcheck.ok', {
-    ip: primary.ip,
-    ok: okCount,
-    total: probes.length,
-  })
-  return Object.assign(primary, { lastFetchTs: Date.now(), probes })
+  if (lastError) {
+    void nxDebug('ipcheck.allfail', errInfo(lastError))
+    throw new Error(
+      `所有IP检测服务都失败: ${extractErrorMessage(lastError) || '未知错误'}`,
+    )
+  } else {
+    throw new Error('没有可用的IP检测服务')
+  }
 }
