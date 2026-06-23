@@ -24,7 +24,7 @@ const FAST_SYNC_INTERVAL_MS = 5 * 1000
 /**
  * 模块级「立即同步」触发器(去抖 20s)。供 IP 检测/代理疑似中断等场景跨组件请求一次尽快同步:
  * 代理断开时经**直连**的 `/api/client/sync` 尽早拿到 401/revoked → 感知到被重置(设备/订阅重置),
- * 而非干等下次心跳。前提:`gate.nexthubx.com` 已在 clash 规则里走 DIRECT,代理断了此请求仍可达后端。
+ * 而非干等下次心跳。前提:`gate.nexthubx.io` 已在 clash 规则里走 DIRECT(nexthubx.io 直连段),代理断了此请求仍可达后端。
  */
 let immediateSyncRef: (() => Promise<void>) | null = null
 let lastImmediateAt = 0

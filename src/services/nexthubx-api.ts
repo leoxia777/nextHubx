@@ -15,7 +15,7 @@ import {
 import { fetch } from '@tauri-apps/plugin-http'
 
 /**
- * 后端控制面 API base —— 业务层域名(nexthubx.com)。
+ * 后端控制面 API base —— 业务层域名(nexthubx.io;.com 灰度下线中)。
  * 激活 /api/activate、同步 /api/client/sync 属「业务/控制面」走这里;
  * 订阅 /sub 与 VLESS 数据面属「订阅层」(hub4cc.com),在下发的 clash 配置里(server_domain),与此分离。
  * 旧客户端用的 gate.hub4cc.com 仍由网关同时服务 /api,故升级不影响存量。
