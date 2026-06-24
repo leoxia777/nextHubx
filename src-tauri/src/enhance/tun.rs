@@ -78,6 +78,22 @@ pub fn use_tun(mut config: Mapping, enable: bool) -> Mapping {
 
     // 更新TUN配置
     revise!(tun_val, "enable", enable);
+
+    if enable {
+        // 防 IPv6 泄漏(mac + win 一致):配合全局 ipv6:false,strict-route 让 IPv6「不可达」,
+        // 应用经 Happy Eyeballs 回退 IPv4 走出口(出口/服务器无需支持 v6)。依据 mihomo 文档——
+        // strict-route 使 unsupported networks 不可达、并把所有连接路由进 tun;不开则应用会把 DNS/
+        // 流量发往路由器的 IPv6 而泄漏。**统一 mac+win**:原"仅 Windows、mac utun 不漏"基于
+        // v4-only 探测(ip.nexthubx.io 无 AAAA)的盲区,不可靠,故两端都开。覆盖存量保存值。
+        // 注:`tun.inet6-address` 在 ipv6:false 下不生效(mihomo:需 ipv6:true),故不靠它捕获 v6。
+        revise!(tun_val, "strict-route", true);
+
+        // 锚定 TUN 接口 IPv4 地址 = mihomo 默认 198.18.0.1/30(值与默认相同,行为不变),
+        // 使后端真态探测(get_tun_runtime_status 查 198.18.x 网卡)**确定可判**,
+        // 不依赖 mihomo 隐式默认(默认若变则探测会一直误判没起来)。
+        append!(tun_val, "inet4-address", "198.18.0.1/30");
+    }
+
     revise!(config, "tun", tun_val);
 
     config

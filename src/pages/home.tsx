@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { BasePage } from '@/components/base'
 import { AccountCard } from '@/components/home/account-card'
 import { DiagnosticsModal } from '@/components/home/diagnostics-modal'
+import { TunHealthCard } from '@/components/home/tun-health-card'
 import { openWebUrl } from '@/services/cmds'
 
 const LazyIpInfoCard = lazy(() =>
@@ -55,6 +56,9 @@ const HomePage = () => {
       }
     >
       <Grid container spacing={1.5} columns={{ xs: 6, sm: 6, md: 12 }}>
+        <Grid size={12}>
+          <TunHealthCard />
+        </Grid>
         <Grid size={6}>
           <AccountCard />
         </Grid>

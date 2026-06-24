@@ -152,6 +152,7 @@ mod app_init {
             cmd::stop_core,
             cmd::restart_core,
             cmd::get_running_mode,
+            cmd::get_tun_runtime_status,
             cmd::get_auto_launch_status,
             cmd::entry_lightweight_mode,
             cmd::exit_lightweight_mode,

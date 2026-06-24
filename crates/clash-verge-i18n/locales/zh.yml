@@ -14,6 +14,9 @@ notifications:
     title: TUN 模式
     'on': TUN 模式已开启。
     'off': TUN 模式已关闭。
+  tunNotRunning:
+    title: TUN 保护未生效
+    body: TUN 已开启但未真正运行,你的流量可能未受保护。请打开 NextHubX 进行修复。
   lightweightModeEntered:
     title: 轻量模式
     body: 已进入轻量模式。

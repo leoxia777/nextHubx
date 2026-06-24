@@ -13,6 +13,9 @@ pub enum NotificationEvent<'a> {
     TunModeToggled(bool),
     LightweightModeEntered,
     ProfilesReactivated,
+    /// TUN「想开却没真跑」(谎报)态:后端周期探测发现 enabled 但 OS 无 TUN 网卡时发,
+    /// 弥补前端守卫只在窗口开时才跑的盲区(tray-only 也能告警)。
+    TunNotRunning,
     AppQuit,
     #[cfg(target_os = "macos")]
     AppHidden,
@@ -66,6 +69,11 @@ pub async fn notify_event<'a>(event: NotificationEvent<'a>) {
         NotificationEvent::ProfilesReactivated => {
             let title = clash_verge_i18n::t!("notifications.profilesReactivated.title");
             let body = clash_verge_i18n::t!("notifications.profilesReactivated.body");
+            notify(title, body);
+        }
+        NotificationEvent::TunNotRunning => {
+            let title = clash_verge_i18n::t!("notifications.tunNotRunning.title");
+            let body = clash_verge_i18n::t!("notifications.tunNotRunning.body");
             notify(title, body);
         }
         NotificationEvent::AppQuit => {
