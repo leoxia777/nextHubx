@@ -34,7 +34,7 @@ pub struct TunRuntimeStatus {
 /// TUN 接口的 inet4-address 由 `enhance::tun::use_tun` **显式锚定为 `198.18.0.1/30`**
 /// (= mihomo 默认,行为不变),所以这里的判定**确定**:TUN 关时没有这块网卡、真起来才有。
 /// 这正是手动 `ipconfig | findstr 198.18` 的程序化版本,跨平台(network-interface,mac/win 同样有效)。
-fn tun_adapter_up() -> bool {
+pub fn tun_adapter_up() -> bool {
     use network_interface::{Addr, NetworkInterface, NetworkInterfaceConfig as _};
 
     let Ok(interfaces) = NetworkInterface::show() else {
@@ -61,7 +61,9 @@ pub async fn tun_runtime_status() -> TunRuntimeStatus {
         available_can_run: is_admin || service_ok,
         enabled_flag,
         adapter_up,
-        running: adapter_up,
+        // running = OS 实测网卡在 且 flag 为开:避免崩溃残留的孤儿 198.18 网卡(flag 已 reconcile 成 false)
+        // 误判为「运行中」。flag 经后端 reconcile 权威化,可信。
+        running: adapter_up && enabled_flag,
     }
 }
 

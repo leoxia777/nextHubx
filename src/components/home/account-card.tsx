@@ -330,19 +330,9 @@ export const AccountCard = () => {
     return () => clearInterval(timer)
   }, [verifyPhase, exitStatus, refetchIp, refresh])
 
-  // 未激活守卫:从未激活 / token 被吊销(isActivated=false)且不处于激活验证流程(verifying)时,
-  // 强制关闭 TUN —— 避免在「无有效订阅配置」下 TUN 仍接管全局流量(走默认/失效出口)。
-  // 激活流程 connect 子阶段会主动开 TUN(verifying=true → 本守卫不触发);
-  // 已激活用户的手动 TUN 开关不受影响(isActivated=true → 不触发)。设为 false 后 verge 变化使本
-  // effect 复跑、条件不再满足 → 自然收敛,无循环。
-  useEffect(() => {
-    if (isActivated || verifying) return
-    if (verge?.enable_tun_mode) {
-      void enableTun(false).catch((err) =>
-        console.error('[nexthubx] force-disable tun (inactive) failed', err),
-      )
-    }
-  }, [isActivated, verifying, verge?.enable_tun_mode, enableTun])
+  // 未激活守卫已删除:TUN「该不该开」收归后端单一权威(core::tun_guard 的 reconcile,
+  // 未激活/不可用即关,幂等、窗口关也生效)。前端不再做 force-disable,避免与后端双写打架/抖动。
+  // 激活流程 connect 子阶段仍主动 enableTun(true) 即时开 TUN(供出口校验),与后端 reconcile 一致。
 
   // 续跑守卫(#2):激活码已校验、配置已导入,但验证流程未走完(setupComplete===false)时,
   // 重开 app 自动从验证流程起点(service)续跑,而非回到激活码输入。

@@ -205,7 +205,9 @@ const ProxyControlSwitches = ({
           onInfoClick={() => tunRef.current?.open()}
           onToggle={handleTunToggle}
           onError={onError}
-          disabled={!isTunModeAvailable}
+          // 锁定为只读:TUN「该不该开」由后端单一权威 reconcile 决定(激活 && 可用 才开),
+          // 不让用户手动开关与之打架/抖动。此处仅展示当前真态。
+          disabled
           highlight={enable_tun_mode || false}
           extraIcons={
             <>
