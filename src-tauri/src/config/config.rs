@@ -68,18 +68,21 @@ impl Config {
         let verge = Self::verge().await.latest_arc();
         clash_verge_i18n::sync_locale(verge.language.as_deref());
 
-        // init Tun mode
-        let handle = Handle::app_handle();
-        let is_admin = is_current_app_handle_admin(handle);
-        let is_service_available = service::is_service_available().await.is_ok();
-        if !is_admin && !is_service_available {
-            let verge = Self::verge().await;
+        // init Tun mode:启动期 flag-only reconcile(core 起前)。单一权威见 core::tun_guard。
+        // should = 已激活 && (管理员 || 服务可用);把 enable_tun_mode 落成 should。
+        // 关键:卸载/重装残留的 enable_tun_mode=true,在未激活时这里被落回 false →
+        // core 不会带着 TUN 起来(根治"残留 flag 把 TUN 带起来再被守卫关掉"的抖动)。
+        let tun_available =
+            is_current_app_handle_admin(Handle::app_handle()) || service::is_service_available().await.is_ok();
+        let should_tun = crate::core::tun_guard::is_activated() && tun_available;
+        let verge = Self::verge().await;
+        let current_tun = verge.latest_arc().enable_tun_mode.unwrap_or(false);
+        if current_tun != should_tun {
             verge.edit_draft(|d| {
-                d.enable_tun_mode = Some(false);
+                d.enable_tun_mode = Some(should_tun);
             });
             verge.apply();
             let _ = tray::Tray::global().update_menu().await;
-
             // 分离数据获取和异步调用避免Send问题
             let verge_data = Self::verge().await.latest_arc();
             logging_error!(Type::Core, verge_data.save_file().await);

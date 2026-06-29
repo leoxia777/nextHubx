@@ -7,8 +7,8 @@ on:
     - cron: '0 4,10 * * *'
 permissions: write-all
 env:
-  TAG_NAME: autobuild
-  TAG_CHANNEL: AutoBuild
+  TAG_NAME: tun-test
+  TAG_CHANNEL: TUN Test Build
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
   HUSKY: 0
@@ -118,7 +118,7 @@ jobs:
 
     uses: clash-verge-rev/clash-verge-rev/.github/workflows/clean-old-assets.yml@dev
     with:
-      tag_name: autobuild
+      tag_name: tun-test
       dry_run: false
 
   autobuild-x86-windows-macos-linux:

@@ -78,6 +78,24 @@ pub fn use_tun(mut config: Mapping, enable: bool) -> Mapping {
 
     // 更新TUN配置
     revise!(tun_val, "enable", enable);
+
+    if enable {
+        // ⚠️ strict-route 必须保持**关闭**(2026-06-29 回归定位,实测铁证)。
+        // 曾为防 IPv6 泄漏把它统一开启(mac+win),但 strict-route 会**误伤 mihomo 的 DIRECT
+        // 直发流量**(网关域 / 私网 / 国内站全走 DIRECT),导致「时通时不通」——老 mac 与
+        // 客户 Windows 两条不同网络同样症状。实测对照(老 mac,电信→HK 线路本身完好):
+        //   TUN 关 → 裸线到网关 20/20;strict-route 关 → 由 0/20 恢复到 11/20;strict-route 开 → 0/20。
+        // 故**显式置 false**(覆盖存量配置里保存的 true,幂等纠正)。
+        // IPv6 泄漏改只靠全局 `ipv6:false`(DNS 过滤 AAAA → 应用只拿到 v4 → 走隧道),覆盖绝大多数场景;
+        // 「硬编码字面 v6」这种极少数后续用 v6 黑洞路由(快速失败、不破网)处理,不再用 strict-route。
+        revise!(tun_val, "strict-route", false);
+
+        // 锚定 TUN 接口 IPv4 地址 = mihomo 默认 198.18.0.1/30(值与默认相同,行为不变),
+        // 使后端真态探测(get_tun_runtime_status 查 198.18.x 网卡)**确定可判**,
+        // 不依赖 mihomo 隐式默认(默认若变则探测会一直误判没起来)。
+        append!(tun_val, "inet4-address", "198.18.0.1/30");
+    }
+
     revise!(config, "tun", tun_val);
 
     config

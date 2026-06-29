@@ -75,6 +75,9 @@ pub fn resolve_setup_async() {
         Handle::refresh_clash();
         refresh_tray_menu().await;
         resolve_done();
+
+        // 后端 TUN 真态守卫:周期探测"想开却没真跑"并发系统通知(tray-only 也有效)。
+        crate::core::tun_guard::start();
     });
 }
 

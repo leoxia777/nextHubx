@@ -522,6 +522,18 @@ export const getRunningMode = async () => {
   return invoke<string>('get_running_mode')
 }
 
+// TUN 真实运行态(给 Home「TUN 校验 card」用):adapterUp 是 OS 实测(198.18.x 网卡),
+// 区别于 enabledFlag(只是"想不想开")。专治"托盘 ✓ 却没真跑"的谎报。
+export interface TunRuntimeStatus {
+  availableCanRun: boolean
+  enabledFlag: boolean
+  adapterUp: boolean
+  running: boolean
+}
+export const getTunRuntimeStatus = async () => {
+  return invoke<TunRuntimeStatus>('get_tun_runtime_status')
+}
+
 // 获取应用运行时间
 export const getAppUptime = async () => {
   return invoke<number>('get_app_uptime')

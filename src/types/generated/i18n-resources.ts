@@ -181,6 +181,25 @@ export interface TranslationResources {
             minutes: string
           }
         }
+        tunHealth: {
+          action: {
+            installing: string
+            installService: string
+          }
+          desc: {
+            leak: string
+            notReady: string
+            off: string
+            running: string
+          }
+          status: {
+            leak: string
+            notReady: string
+            off: string
+            running: string
+          }
+          title: string
+        }
       }
       page: {
         cards: {

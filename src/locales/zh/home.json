@@ -60,6 +60,25 @@
         "exitMismatch": "TUN 可能没生效或被抢占。重启核心 / 关停冲突的 Clash Verge 后重试。"
       }
     },
+    "tunHealth": {
+      "title": "网络保护 (TUN)",
+      "status": {
+        "running": "TUN 运行中,流量已受保护",
+        "notReady": "TUN 未就绪,需要后台服务",
+        "leak": "TUN 已开启但未真正运行",
+        "off": "TUN 未开启"
+      },
+      "desc": {
+        "running": "已检测到 TUN 网卡正常工作。",
+        "notReady": "TUN 需要后台服务支持,请先安装并授权,再激活账号。",
+        "leak": "TUN 已开启,但系统未检测到 TUN 网卡 —— 流量可能正在直连、未受保护。请尝试重启客户端或修复服务。",
+        "off": "激活账号后将自动开启 TUN 保护。"
+      },
+      "action": {
+        "installService": "安装服务 / 授权",
+        "installing": "安装中…"
+      }
+    },
     "proxyTun": {
       "status": {
         "systemProxyEnabled": "系统代理已启用，您的应用将通过代理访问网络",

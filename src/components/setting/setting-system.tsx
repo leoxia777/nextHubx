@@ -33,7 +33,10 @@ const SettingSystem = ({ onError }: Props) => {
   const enforcedRef = useRef(false)
   const lockedTooltip = t('settings.sections.system.tooltips.locked')
 
-  // 挂载时强制把四项锁定项置为开(保持 DB / 运行态一致,UI 同时只读展示为开)。
+  // 挂载时强制把锁定项置为开(保持 DB / 运行态一致,UI 同时只读展示为开)。
+  // 注:**TUN(enable_tun_mode)不在此强制** —— 它的开关已收归后端单一权威 reconcile
+  // (core::tun_guard:已激活 && 可用 才开)。早前这里 force-on TUN 会与 reconcile 双写打架:
+  // 切到设置页强开 → 切回首页 🟢 → reconcile(未激活)~30s 关 → ⚪ 抖动。故移除 TUN 这条。
   useEffect(() => {
     if (enforcedRef.current) return
     if (!verge || !clash) return
@@ -41,9 +44,6 @@ const SettingSystem = ({ onError }: Props) => {
 
     void (async () => {
       try {
-        if (verge.enable_tun_mode !== true) {
-          await patchVerge({ enable_tun_mode: true })
-        }
         if (verge.enable_auto_launch !== true) {
           await patchVerge({ enable_auto_launch: true })
         }
@@ -65,8 +65,12 @@ const SettingSystem = ({ onError }: Props) => {
     value: boolean,
   ) => value
 
-  // 锁定项:只读、强制 checked、disabled,附 tooltip 说明
+  // 锁定项(auto-launch / dns / unified-delay):只读、强制 checked、disabled。
   const lockedSwitch = <MuiSwitch edge="end" checked disabled />
+  // TUN 开关:只读(由后端 reconcile 按激活态驱动),但**反映真实值**(未激活=关),不硬编码开。
+  const tunSwitch = (
+    <MuiSwitch edge="end" checked={verge?.enable_tun_mode === true} disabled />
+  )
 
   return (
     <SettingList title={t('settings.sections.system.title')}>
@@ -74,7 +78,7 @@ const SettingSystem = ({ onError }: Props) => {
         label={t('settings.sections.system.toggles.tunMode')}
         extra={<TooltipIcon title={lockedTooltip} sx={{ opacity: '0.7' }} />}
       >
-        {lockedSwitch}
+        {tunSwitch}
       </SettingItem>
 
       <SettingItem
