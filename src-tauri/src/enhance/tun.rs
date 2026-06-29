@@ -80,13 +80,15 @@ pub fn use_tun(mut config: Mapping, enable: bool) -> Mapping {
     revise!(tun_val, "enable", enable);
 
     if enable {
-        // 防 IPv6 泄漏(mac + win 一致):配合全局 ipv6:false,strict-route 让 IPv6「不可达」,
-        // 应用经 Happy Eyeballs 回退 IPv4 走出口(出口/服务器无需支持 v6)。依据 mihomo 文档——
-        // strict-route 使 unsupported networks 不可达、并把所有连接路由进 tun;不开则应用会把 DNS/
-        // 流量发往路由器的 IPv6 而泄漏。**统一 mac+win**:原"仅 Windows、mac utun 不漏"基于
-        // v4-only 探测(ip.nexthubx.io 无 AAAA)的盲区,不可靠,故两端都开。覆盖存量保存值。
-        // 注:`tun.inet6-address` 在 ipv6:false 下不生效(mihomo:需 ipv6:true),故不靠它捕获 v6。
-        revise!(tun_val, "strict-route", true);
+        // ⚠️ strict-route 必须保持**关闭**(2026-06-29 回归定位,实测铁证)。
+        // 曾为防 IPv6 泄漏把它统一开启(mac+win),但 strict-route 会**误伤 mihomo 的 DIRECT
+        // 直发流量**(网关域 / 私网 / 国内站全走 DIRECT),导致「时通时不通」——老 mac 与
+        // 客户 Windows 两条不同网络同样症状。实测对照(老 mac,电信→HK 线路本身完好):
+        //   TUN 关 → 裸线到网关 20/20;strict-route 关 → 由 0/20 恢复到 11/20;strict-route 开 → 0/20。
+        // 故**显式置 false**(覆盖存量配置里保存的 true,幂等纠正)。
+        // IPv6 泄漏改只靠全局 `ipv6:false`(DNS 过滤 AAAA → 应用只拿到 v4 → 走隧道),覆盖绝大多数场景;
+        // 「硬编码字面 v6」这种极少数后续用 v6 黑洞路由(快速失败、不破网)处理,不再用 strict-route。
+        revise!(tun_val, "strict-route", false);
 
         // 锚定 TUN 接口 IPv4 地址 = mihomo 默认 198.18.0.1/30(值与默认相同,行为不变),
         // 使后端真态探测(get_tun_runtime_status 查 198.18.x 网卡)**确定可判**,
