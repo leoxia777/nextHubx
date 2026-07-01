@@ -8,7 +8,7 @@ import { updateLastCheckTime } from '@/hooks/use-update'
 import { useVerge } from '@/hooks/use-verge'
 import { exportDiagnosticInfo, openLogsDir } from '@/services/cmds'
 import { supportedLanguages } from '@/services/i18n'
-import { ensureDeviceId } from '@/services/nexthubx-api'
+import { ensureDeviceId, IS_PROD_ENV } from '@/services/nexthubx-api'
 import { showNotice } from '@/services/notice-service'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
 import { version } from '@root/package.json'
@@ -186,6 +186,17 @@ const SettingVergeBasic = ({ onError }: Props) => {
           {deviceId}
         </Typography>
       </SettingItem>
+
+      {/* 环境标识:生产不显示(对客户干净),仅测试/staging/本地显示 */}
+      {!IS_PROD_ENV && (
+        <SettingItem label="环境">
+          <Typography
+            sx={{ py: '7px', pr: 1, color: 'warning.main', fontWeight: 600 }}
+          >
+            测试环境
+          </Typography>
+        </SettingItem>
+      )}
 
       <SettingItem label={t('settings.components.verge.basic.fields.version')}>
         <Typography sx={{ py: '7px', pr: 1 }}>v{version}</Typography>
