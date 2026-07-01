@@ -20,7 +20,23 @@ import { fetch } from '@tauri-apps/plugin-http'
  * 订阅 /sub 与 VLESS 数据面属「订阅层」(hub4cc.com),在下发的 clash 配置里(server_domain),与此分离。
  * 旧客户端用的 gate.hub4cc.com 仍由网关同时服务 /api,故升级不影响存量。
  */
-export const NEXTHUBX_API_BASE = 'https://gate.nexthubx.io'
+// 环境相关:build 时经 VITE_NEXTHUBX_API_BASE 注入(生产=pgate、测试=stage.gate;
+// 见 cc-gateway docs「生产环境-控制面设计」E 项)。缺省 = gate.nexthubx.io(现网/存量,不设 env 行为不变)。
+export const NEXTHUBX_API_BASE =
+  import.meta.env.VITE_NEXTHUBX_API_BASE || 'https://gate.nexthubx.io'
+
+/**
+ * 是否生产环境 —— 由编译期烤入的 API base 判定(生产 = pgate.*)。
+ * 生产客户端**不显示**环境标识(对客户干净);测试/staging/本地显示「测试环境」便于区分。
+ * 环境隔离本身靠 API base + updater endpoint + 独立 R2 桶(编译期烤死),与版本号无关。
+ */
+export const IS_PROD_ENV = ((): boolean => {
+  try {
+    return new URL(NEXTHUBX_API_BASE).hostname.startsWith('pgate.')
+  } catch {
+    return false
+  }
+})()
 
 const REQUEST_TIMEOUT_MS = 15_000
 

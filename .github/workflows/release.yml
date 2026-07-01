@@ -12,7 +12,8 @@ name: NextHubX Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*' # 测试 channel(现网/存量,行为不变)
+      - 'prod-v*.*.*' # 生产 channel(pgate/psub + pupdates,独立 R2 桶)
 
 permissions:
   contents: write # create/update GitHub Releases
@@ -31,10 +32,31 @@ jobs:
   check-version:
     name: Check tag matches package.json
     runs-on: ubuntu-latest
+    # 派生 channel + semver 供 build/publish 消费(单一来源,两 job 同判)
+    outputs:
+      channel: ${{ steps.chan.outputs.channel }}
+      version: ${{ steps.chan.outputs.version }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      # tag 前缀选 channel:prod-v* → 生产;v* → 测试(现网,行为不变)。
+      # 剥掉 prod- 前缀后得到与 package.json 对齐的 semver tag。
+      - name: Resolve channel + version from tag
+        id: chan
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == prod-v* ]]; then
+            CHANNEL=prod
+            SEMVER_TAG="${TAG#prod-}"   # prod-v1.2.3 → v1.2.3
+          else
+            CHANNEL=test
+            SEMVER_TAG="$TAG"           # v1.2.3
+          fi
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "version=${SEMVER_TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Channel=$CHANNEL, semver tag=$SEMVER_TAG"
 
       - name: Verify tag is reachable from main
         run: |
@@ -47,14 +69,16 @@ jobs:
           fi
 
       - name: Verify tag == v<package.json version>
+        env:
+          SEMVER_TAG: v${{ steps.chan.outputs.version }}
         run: |
           PKG_VERSION=$(jq -r .version package.json)
           EXPECTED="v$PKG_VERSION"
-          if [[ "$GITHUB_REF_NAME" != "$EXPECTED" ]]; then
-            echo "::error::Version mismatch: tag=$GITHUB_REF_NAME package.json=$EXPECTED"
+          if [[ "$SEMVER_TAG" != "$EXPECTED" ]]; then
+            echo "::error::Version mismatch: tag(semver)=$SEMVER_TAG package.json=$EXPECTED"
             exit 1
           fi
-          echo "OK: $GITHUB_REF_NAME == $EXPECTED"
+          echo "OK: $SEMVER_TAG == $EXPECTED (channel=${{ steps.chan.outputs.channel }})"
 
   # ── 1. Build + sign + create a draft GitHub Release with bundles + .sig ───────
   build:
@@ -120,11 +144,22 @@ jobs:
           pnpm i
           pnpm run prebuild ${{ matrix.target }}
 
+      # 生产 channel:把烤进二进制的 updater endpoint 指向 pupdates(独立 R2 桶)。
+      # 测试 channel 保持 tauri.conf.json 里的默认 updates.nexthubx.io,不动。
+      - name: Point updater endpoint to prod channel
+        if: needs.check-version.outputs.channel == 'prod'
+        shell: bash
+        run: |
+          node -e "const fs=require('fs');const f='src-tauri/tauri.conf.json';let s=fs.readFileSync(f,'utf8');const from='https://updates.nexthubx.io/{{target}}-{{arch}}/latest.json';const to='https://pupdates.nexthubx.io/{{target}}-{{arch}}/latest.json';if(!s.includes(from)){console.error('::error::updater endpoint default not found — cannot repoint to prod');process.exit(1);}fs.writeFileSync(f,s.split(from).join(to));const now=require('./'+f).plugins.updater.endpoints;if(!now.every(e=>e.includes('pupdates.nexthubx.io'))){console.error('::error::endpoint repoint failed',now);process.exit(1);}console.log('updater endpoint → pupdates.nexthubx.io:',now);"
+
       - name: Tauri build (dmg/nsis + updater .sig, unsigned binaries)
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ── 业务 API base(Vite 编译期烤进前端)。prod → pgate;测试/默认 → 空
+          #    (客户端回退 gate.nexthubx.io,现网行为不变)。Vite 从进程环境读 VITE_*。
+          VITE_NEXTHUBX_API_BASE: ${{ needs.check-version.outputs.channel == 'prod' && 'https://pgate.nexthubx.io' || '' }}
           # ── Updater signing (minisign). From nexthubx-updater.key — see docs/RELEASE.md.
           #    Independent of OS code signing. If unset, .sig is not produced and
           #    auto-update won't verify; build still succeeds.
@@ -148,12 +183,13 @@ jobs:
   # ── 2. Generate per-target latest.json, push to R2, publish the Release ───────
   publish:
     name: Publish Release + latest.json
-    needs: [build]
+    needs: [check-version, build]
     runs-on: ubuntu-latest
     env:
       # Map presence of R2 secrets to a plain env flag — `secrets.*` is not
       # reliably usable inside step-level `if:`, so we gate on this instead.
-      R2_CONFIGURED: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_ENDPOINT != '' }}
+      # prod 用独立桶 + 独立 S3 凭证(R2_*_PROD);test 用现网凭证。两者共用账号级 R2_ENDPOINT。
+      R2_CONFIGURED: ${{ secrets.R2_ENDPOINT != '' && ( (needs.check-version.outputs.channel == 'prod' && secrets.R2_ACCESS_KEY_ID_PROD != '' && secrets.R2_BUCKET_PROD != '') || (needs.check-version.outputs.channel != 'prod' && secrets.R2_ACCESS_KEY_ID != '') ) }}
     steps:
       - uses: actions/checkout@v6
 
@@ -165,8 +201,11 @@ jobs:
       - name: Resolve version + tag
         id: meta
         run: |
+          # tag = 实际 git tag(prod-v* 或 v*),用于 gh release / 下载 URL。
+          # version = 已剥 prod-v/v 前缀的纯 semver(latest.json 版本比对用)。
           echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.check-version.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "channel=${{ needs.check-version.outputs.channel }}" >> "$GITHUB_OUTPUT"
           if [[ "${GITHUB_REF_NAME}" == *-rc* ]]; then
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
@@ -284,9 +323,9 @@ jobs:
         # 仅正式版推 R2(生产分发 + updater 通道);预发(-rc)只构建+建 GitHub 预发布,不碰线上
         if: ${{ env.R2_CONFIGURED == 'true' && steps.meta.outputs.prerelease == 'false' }}
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_ACCESS_KEY_ID_PROD || secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_SECRET_ACCESS_KEY_PROD || secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_BUCKET_PROD || secrets.R2_BUCKET }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         run: |
           # aws-cli is preinstalled on ubuntu-latest runners.
@@ -306,9 +345,9 @@ jobs:
         if: ${{ env.R2_CONFIGURED == 'true' && steps.meta.outputs.prerelease == 'false' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_ACCESS_KEY_ID_PROD || secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_SECRET_ACCESS_KEY_PROD || secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_BUCKET_PROD || secrets.R2_BUCKET }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
