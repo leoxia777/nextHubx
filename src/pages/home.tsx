@@ -1,6 +1,5 @@
-import { HelpOutlineRounded, NetworkCheckRounded } from '@mui/icons-material'
+import { NetworkCheckRounded } from '@mui/icons-material'
 import { Box, Grid, IconButton, Skeleton, Tooltip } from '@mui/material'
-import { useLockFn } from 'ahooks'
 import { Suspense, lazy, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -8,7 +7,6 @@ import { BasePage } from '@/components/base'
 import { AccountCard } from '@/components/home/account-card'
 import { DiagnosticsModal } from '@/components/home/diagnostics-modal'
 import { TunHealthCard } from '@/components/home/tun-health-card'
-import { openWebUrl } from '@/services/cmds'
 
 const LazyIpInfoCard = lazy(() =>
   import('@/components/home/ip-info-card').then((module) => ({
@@ -28,10 +26,6 @@ const HomePage = () => {
   const { t } = useTranslation()
   const [diagOpen, setDiagOpen] = useState(false)
 
-  const toGithubDoc = useLockFn(() => {
-    return openWebUrl('https://clash-verge-rev.github.io/index.html')
-  })
-
   return (
     <BasePage
       title={t('home.page.title')}
@@ -45,11 +39,6 @@ const HomePage = () => {
               color="inherit"
             >
               <NetworkCheckRounded />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('home.page.tooltips.manual')} arrow>
-            <IconButton onClick={toGithubDoc} size="small" color="inherit">
-              <HelpOutlineRounded />
             </IconButton>
           </Tooltip>
         </Box>
