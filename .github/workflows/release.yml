@@ -91,11 +91,10 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             label: macOS-aarch64
-          # x86_64 用原生 Intel runner(macos-13)构建,而非在 ARM(macos-latest)上交叉编译:
-          # macos-latest 镜像已移除 /usr/local 下的 Intel Homebrew,交叉编译的 OpenSSL 步骤会
-          # 回退到 Rosetta 跑 ARM brew 而被拒(Cannot install under Rosetta 2 in ARM prefix)。
-          # 原生 Intel 无需交叉编译 OpenSSL。(macos-13 将来 EOL 时改用 vendored openssl。)
-          - os: macos-13
+          # x86_64 在 ARM runner(macos-latest,充足)上交叉编译。项目 TLS 走 rustls、
+          # 无 openssl-sys 依赖(Cargo.lock 仅 openssl-probe=纯 Rust 探测证书路径,不链 libssl),
+          # 故无需装任何 OpenSSL。(曾试 macos-13 原生 Intel,但该池稀缺常排队 30min+ 不分配。)
+          - os: macos-latest
             target: x86_64-apple-darwin
             label: macOS-x64
           - os: windows-latest
@@ -130,18 +129,6 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           run_install: false
-
-      # macOS runner 现为 Apple Silicon;构建 x86_64-apple-darwin = 交叉编译,
-      # 需 x86_64 版 OpenSSL(沿用 CVR autobuild 配方)。aarch64 原生构建不需要。
-      - name: Install x86_64 OpenSSL (macOS Intel cross-build only)
-        if: matrix.target == 'x86_64-apple-darwin'
-        run: |
-          arch -x86_64 /usr/local/bin/brew install openssl@3 2>/dev/null || arch -x86_64 brew install openssl@3
-          PREFIX=$(arch -x86_64 brew --prefix openssl@3)
-          echo "OPENSSL_DIR=$PREFIX" >> "$GITHUB_ENV"
-          echo "OPENSSL_INCLUDE_DIR=$PREFIX/include" >> "$GITHUB_ENV"
-          echo "OPENSSL_LIB_DIR=$PREFIX/lib" >> "$GITHUB_ENV"
-          echo "PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig" >> "$GITHUB_ENV"
 
       - name: Install deps + prebuild sidecars
         run: |
