@@ -91,7 +91,11 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             label: macOS-aarch64
-          - os: macos-latest
+          # x86_64 用原生 Intel runner(macos-13)构建,而非在 ARM(macos-latest)上交叉编译:
+          # macos-latest 镜像已移除 /usr/local 下的 Intel Homebrew,交叉编译的 OpenSSL 步骤会
+          # 回退到 Rosetta 跑 ARM brew 而被拒(Cannot install under Rosetta 2 in ARM prefix)。
+          # 原生 Intel 无需交叉编译 OpenSSL。(macos-13 将来 EOL 时改用 vendored openssl。)
+          - os: macos-13
             target: x86_64-apple-darwin
             label: macOS-x64
           - os: windows-latest
