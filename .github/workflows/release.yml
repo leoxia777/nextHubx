@@ -148,9 +148,10 @@ jobs:
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ── 业务 API base(Vite 编译期烤进前端)。prod → pgate;测试/默认 → 空
-          #    (客户端回退 gate.nexthubx.io,现网行为不变)。Vite 从进程环境读 VITE_*。
-          VITE_NEXTHUBX_API_BASE: ${{ needs.check-version.outputs.channel == 'prod' && 'https://pgate.nexthubx.io' || '' }}
+          # ── 业务 API base(Vite 编译期烤进前端)。prod → pgate;测试(过渡中)→ stage.gate
+          #    (测试环境已迁 stage.*;经 updates 频道推,存量用户自更新迁到 stage.gate。updater 频道不动)。
+          #    Vite 从进程环境读 VITE_*。
+          VITE_NEXTHUBX_API_BASE: ${{ needs.check-version.outputs.channel == 'prod' && 'https://pgate.nexthubx.io' || 'https://stage.gate.nexthubx.io' }}
           # ── Updater signing (minisign). From nexthubx-updater.key — see docs/RELEASE.md.
           #    Independent of OS code signing. If unset, .sig is not produced and
           #    auto-update won't verify; build still succeeds.
