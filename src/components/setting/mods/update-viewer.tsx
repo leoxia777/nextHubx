@@ -14,6 +14,7 @@ import { useUpdate } from '@/hooks/use-update'
 import { portableFlag } from '@/pages/_layout'
 import { showNotice } from '@/services/notice-service'
 import { useSetUpdateState, useUpdateState } from '@/services/states'
+import { resolveRemoteVersion } from '@/services/update'
 
 type MarkdownNode = {
   type: string
@@ -142,6 +143,16 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
     return updateInfo?.body.toLowerCase().includes('break change')
   }, [updateInfo])
 
+  // Tauri Update.version 对 platforms-nested 的 latest.json 可能为空 → 用 resolveRemoteVersion
+  // (与 checkUpdateSafe 同源,会回退 rawJson.version)拿到真实版本号,避免「新版本 v」空显示。
+  const remoteVersion = useMemo(
+    () =>
+      updateInfo
+        ? (resolveRemoteVersion(updateInfo) ?? updateInfo.version ?? '')
+        : '',
+    [updateInfo],
+  )
+
   const onUpdate = useLockFn(async () => {
     if (portableFlag) {
       showNotice.error('settings.modals.update.messages.portableError')
@@ -220,7 +231,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
             }}
           >
             {t('settings.modals.update.title', {
-              version: updateInfo?.version ?? '',
+              version: remoteVersion,
             })}
           </Box>
           <Button
@@ -229,7 +240,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
             sx={{ whiteSpace: 'nowrap' }}
             onClick={() => {
               openUrl(
-                `https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/v${updateInfo?.version}`,
+                `https://github.com/leoxia777/nextHubx/releases/tag/v${remoteVersion}`,
               )
             }}
           >
