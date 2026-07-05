@@ -336,6 +336,21 @@ export interface TranslationResources {
           verifying: string
         }
       }
+      bootstrap: {
+        codeLabel: string
+        codePlaceholder: string
+        entry: string
+        feedback: {
+          empty: string
+          invalid: string
+          networkError: string
+          success: string
+        }
+        hint: string
+        submit: string
+        submitting: string
+        title: string
+      }
       brand: string
       clashVergeConflict: {
         appearedBody: string

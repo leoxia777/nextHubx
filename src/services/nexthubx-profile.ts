@@ -16,6 +16,8 @@ import {
 } from '@/services/cmds'
 
 const MANAGED_PROFILE_NAME = 'nextHubx'
+// 临时引导用独立命名的 profile:不复用正式激活的托管配置,避免覆盖真实账号配置。
+const BOOTSTRAP_PROFILE_NAME = 'nextHubx 临时引导'
 
 /** 列出当前所有 profile item(含 type/name,用于精确识别我们托管的 local 主配置)。 */
 async function listProfileItems(): Promise<IProfileItem[]> {
@@ -78,6 +80,51 @@ export async function importAndActivateProfile(
     )
     if (!created) {
       throw new Error('Failed to locate newly created nextHubx profile')
+    }
+    targetUid = created.uid
+  }
+
+  await patchProfilesConfig({ current: targetUid })
+  await enhanceProfiles()
+  return targetUid
+}
+
+/**
+ * 导入临时引导 clash 配置并切换为当前 profile(激活前无梯子过 CF 验证 / 试 TUN 用)。
+ *
+ * 用独立命名的 local profile(不复用正式激活的托管 profile),避免覆盖用户真实账号配置;
+ * 按 type+name find-or-create(重复签发只更新同一个引导 profile,不堆积)。不写 clientState,
+ * 故 app 仍处「未激活」态——用户完成验证后再走正式激活流程。
+ */
+export async function importBootstrapProfile(yaml: string): Promise<string> {
+  const items = await listProfileItems()
+  const existing = items.find(
+    (p) => p.type === 'local' && p.name === BOOTSTRAP_PROFILE_NAME,
+  )
+  let targetUid = existing?.uid
+
+  if (targetUid) {
+    await saveProfileFile(targetUid, yaml)
+  } else {
+    const before = new Set(items.map((p) => p.uid))
+    await createProfile(
+      {
+        type: 'local',
+        name: BOOTSTRAP_PROFILE_NAME,
+        desc: '临时引导访问(约 1 小时有效)',
+        url: '',
+        option: { with_proxy: false, self_proxy: false },
+      },
+      yaml,
+    )
+    const created = (await listProfileItems()).find(
+      (p) =>
+        !before.has(p.uid) &&
+        p.type === 'local' &&
+        p.name === BOOTSTRAP_PROFILE_NAME,
+    )
+    if (!created) {
+      throw new Error('Failed to locate newly created bootstrap profile')
     }
     targetUid = created.uid
   }

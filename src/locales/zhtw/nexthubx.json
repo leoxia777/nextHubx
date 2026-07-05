@@ -30,6 +30,21 @@
       "unknown": "Activation failed, please try again later"
     }
   },
+  "bootstrap": {
+    "entry": "Temporary bootstrap access",
+    "title": "Temporary bootstrap access",
+    "hint": "Before activating your real account, if you need to complete Cloudflare email-forwarding verification or test the network first, ask operations for a temporary bootstrap code. Entering it grants about 1 hour of temporary proxy (system proxy enabled) to finish verification. It expires automatically and is unrelated to your real account.",
+    "codeLabel": "Bootstrap code",
+    "codePlaceholder": "Enter the temporary bootstrap code from operations",
+    "submit": "Enable temporary access",
+    "submitting": "Enabling…",
+    "feedback": {
+      "empty": "Please enter the bootstrap code",
+      "success": "Temporary access enabled (about 1 hour). Complete verification/testing, then activate your real account.",
+      "invalid": "Bootstrap code is invalid or expired. Ask operations for a new one.",
+      "networkError": "Network error, please try again later"
+    }
+  },
   "connect": {
     "title": "Connect",
     "status": {

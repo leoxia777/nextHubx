@@ -196,6 +196,52 @@ export async function activate(
   return data
 }
 
+/** POST /api/bootstrap/activate 成功响应(临时引导:无身份 / 无 clientToken)。 */
+export interface BootstrapActivateResult {
+  proxyConfig: ProxyConfig
+  /** 该临时出口公网 IP,客户端用于比对实际出口。 */
+  expectedExitIp?: string
+  /** 到期时间(ISO);客户端可提示有效期。 */
+  expiresAt?: string
+}
+
+/**
+ * 临时引导激活:POST /api/bootstrap/activate { code }
+ * - 200 → 临时 clash 配置(默认 1h,到期后端硬失效)
+ * - 410 / 404 → 抛 ActivationInvalidError(码无效或已过期)
+ * - 其他非 2xx → 抛 Error
+ *
+ * 用途:激活正式账号前(用户无梯子)完成 CF 邮箱转发验证 / 试 TUN 的死锁破解。
+ * 不绑邮箱/设备、不烧码(时间失效)、不下发身份密码/clientToken —— 纯临时代理。
+ */
+export async function bootstrapActivate(
+  code: string,
+): Promise<BootstrapActivateResult> {
+  const userAgent = await buildUserAgent()
+  const response = await fetch(`${NEXTHUBX_API_BASE}/api/bootstrap/activate`, {
+    method: 'POST',
+    connectTimeout: REQUEST_TIMEOUT_MS,
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': userAgent,
+    },
+    body: JSON.stringify({ code: code.trim() }),
+  })
+
+  if (response.status === 410 || response.status === 404) {
+    throw new ActivationInvalidError()
+  }
+  if (!response.ok) {
+    throw new Error(`Bootstrap activate failed with status ${response.status}`)
+  }
+
+  const data = (await response.json()) as BootstrapActivateResult
+  if (!data?.proxyConfig?.content) {
+    throw new Error('Bootstrap activate response missing proxyConfig')
+  }
+  return data
+}
+
 /**
  * 同步:GET /api/client/sync
  *   Authorization: Bearer <clientToken>

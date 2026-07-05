@@ -13,6 +13,7 @@ import { showNotice } from '@/services/notice-service'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
 import { version } from '@root/package.json'
 
+import { BootstrapViewer } from './mods/bootstrap-viewer'
 import { GuardState } from './mods/guard-state'
 import { SettingItem, SettingList } from './mods/setting-comp'
 import { ThemeModeSwitch } from './mods/theme-mode-switch'
@@ -56,6 +57,7 @@ const SettingVergeBasic = ({ onError }: Props) => {
   const { theme_mode, language } = verge ?? {}
   const themeRef = useRef<DialogRef>(null)
   const updateRef = useRef<DialogRef>(null)
+  const bootstrapRef = useRef<DialogRef>(null)
 
   const onChangeData = (patch: Partial<IVergeConfig>) => {
     mutateVerge({ ...verge, ...patch }, false)
@@ -100,6 +102,7 @@ const SettingVergeBasic = ({ onError }: Props) => {
     <SettingList title={t('settings.components.verge.basic.title')}>
       <ThemeViewer ref={themeRef} />
       <UpdateViewer ref={updateRef} />
+      <BootstrapViewer ref={bootstrapRef} />
 
       <SettingItem label={t('settings.components.verge.basic.fields.language')}>
         <GuardState
@@ -169,6 +172,12 @@ const SettingVergeBasic = ({ onError }: Props) => {
       <SettingItem
         onClick={onExportDiagnosticInfo}
         label={t('settings.components.verge.basic.fields.exportDiagnostics')}
+      />
+
+      {/* 临时引导访问:激活正式账号前(无梯子)输运营发的临时码 → 临时代理,完成 CF 邮箱验证 / 试 TUN */}
+      <SettingItem
+        onClick={() => bootstrapRef.current?.open()}
+        label={t('nexthubx.bootstrap.entry')}
       />
 
       <SettingItem label="设备 ID">

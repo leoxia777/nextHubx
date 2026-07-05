@@ -215,6 +215,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
+          # updater 下载基址 = R2 公共域名(= latest.json 所在桶根),按渠道选 test/prod。
+          UPDATER_BASE: ${{ steps.meta.outputs.channel == 'prod' && 'https://pupdates.nexthubx.io' || 'https://updates.nexthubx.io' }}
         run: |
           mkdir -p out
           # asset name → browser_download_url map for this tag's (draft) release
@@ -230,8 +232,10 @@ jobs:
             [ -z "$url" ] && { echo ""; return; }
             gh release download "$TAG" --pattern "$1" --output - 2>/dev/null || echo ""
           }
-          # 用 tag 固定下载地址(un-draft 后有效);不可用 draft 的 untagged url(会 404)
-          url_of() { echo "https://github.com/leoxia777/nextHubx/releases/download/${TAG}/$1"; }
+          # updater 下载地址走 R2(updates/pupdates,= 桶根),而非 github release —— github 下载在中国被墙,
+          # 导致 in-app 自更新拉不到包。与「Upload installers + updater assets」上传的 download/<tag>/<name> 对齐;
+          # 桶内文件与 github 资产字节一致 → latest.json 里的签名照样匹配。下载页直链另见 download/ 步骤。
+          url_of() { echo "${UPDATER_BASE}/download/${TAG}/$1"; }
 
           PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           NOTES="NextHubX $TAG"
@@ -311,6 +315,58 @@ jobs:
 
       # R2 is an S3-compatible bucket. Endpoint/keys are placeholders — step is
       # skipped (no error) until the four R2_* secrets are configured.
+      # 安装包 + 更新器产物传 R2。**必须在上传 latest.json 之前**跑——latest.json 的 url 现指向 R2
+      #   download/<tag>/<name>(治中国 in-app 自更新:github 下载被墙),故先把产物放好、再发布 manifest。
+      #   download/<tag>/<原名>       —— 版本归档,地址含版本号 → immutable 长缓存(updater url 指向它)
+      #   download/latest/NextHubX-*  —— 固定直链,每版覆盖 → no-cache,下载页/分发用
+      - name: Upload installers + updater assets to R2 (download/ + latest/)
+        # 仅正式版推 R2(生产分发 + updater 通道);预发(-rc)只构建+建 GitHub 预发布,不碰线上
+        if: ${{ env.R2_CONFIGURED == 'true' && steps.meta.outputs.prerelease == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_ACCESS_KEY_ID_PROD || secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_SECRET_ACCESS_KEY_PROD || secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_BUCKET_PROD || secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          mkdir -p inst
+          # .app.tar.gz = mac 更新器产物(latest.json 的 mac url 指向它);-setup.exe = win 更新器产物 + 安装包
+          gh release download "$TAG" --dir inst --pattern '*.dmg' --pattern '*-setup.exe' --pattern '*.app.tar.gz' || true
+          put() { # $1 local  $2 r2-key  $3 content-type  $4 cache-control
+            aws s3 cp "$1" "s3://${R2_BUCKET}/$2" --endpoint-url "$R2_ENDPOINT" \
+              --content-type "$3" --cache-control "$4"
+          }
+          DMG='application/x-apple-diskimage'; EXE='application/vnd.microsoft.portable-executable'
+          GZ='application/gzip'
+          IMM='public, max-age=31536000, immutable'
+          # 按架构子串归类(产物名沿 CVR 约定:_aarch64.dmg / _x64.dmg / _x64-setup.exe / _arm64-setup.exe)
+          MAC_ARM=$(ls inst/*aarch64*.dmg 2>/dev/null | head -1)
+          MAC_X64=$(ls inst/*_x64.dmg 2>/dev/null | head -1)
+          WIN_X64=$(ls inst/*x64-setup.exe 2>/dev/null | head -1)
+          WIN_ARM=$(ls inst/*arm64-setup.exe 2>/dev/null | head -1)
+          arch_put() { # $1 local  $2 latest 固定名  $3 ctype
+            [ -z "$1" ] && { echo "::warning::missing installer for $2"; return; }
+            put "$1" "download/${TAG}/$(basename "$1")" "$3" "$IMM"   # 版本化归档
+            put "$1" "download/latest/$2" "$3" 'no-cache'             # 架构固定直链
+          }
+          arch_put "$MAC_ARM" "NextHubX-mac-aarch64.dmg" "$DMG"
+          arch_put "$MAC_X64" "NextHubX-mac-x64.dmg"   "$DMG"
+          arch_put "$WIN_X64" "NextHubX-win-x64.exe"   "$EXE"
+          arch_put "$WIN_ARM" "NextHubX-win-arm64.exe" "$EXE"
+          # 更新器产物(mac .app.tar.gz;win -setup.exe 已由 arch_put 归档到 download/<tag>/)传 R2 版本化路径,
+          # 供 latest.json 的 R2 url 指向 —— 这是中国 in-app 自更新能下载成功的关键。
+          for f in inst/*.app.tar.gz; do
+            [ -e "$f" ] || continue
+            put "$f" "download/${TAG}/$(basename "$f")" "$GZ" "$IMM"
+            echo "updater artifact → R2: download/${TAG}/$(basename "$f")"
+          done
+          # 向后兼容旧固定名(指向主流架构:mac→aarch64, win→x64)
+          [ -n "$MAC_ARM" ] && put "$MAC_ARM" "download/latest/NextHubX-mac.dmg" "$DMG" 'no-cache'
+          [ -n "$WIN_X64" ] && put "$WIN_X64" "download/latest/NextHubX-win.exe" "$EXE" 'no-cache'
+          echo "Installers + updater assets synced to R2: download/${TAG}/ + download/latest/"
+
+      # latest.json 最后上传(此时 download/<tag>/ 的更新器产物已就位,url 有效)——manifest 一上线即可用。
       - name: Upload latest.json to Cloudflare R2
         # 仅正式版推 R2(生产分发 + updater 通道);预发(-rc)只构建+建 GitHub 预发布,不碰线上
         if: ${{ env.R2_CONFIGURED == 'true' && steps.meta.outputs.prerelease == 'false' }}
@@ -327,48 +383,6 @@ jobs:
             --content-type application/json \
             --cache-control 'no-cache'
           echo "Uploaded latest.json files to R2 bucket $R2_BUCKET."
-
-      # 安装包(dmg/exe)也传 R2,供 download.nexthubx.com 下载页直链(国内首次下载提速):
-      #   download/<tag>/<原名>       —— 版本归档,地址含版本号 → immutable 长缓存
-      #   download/latest/NextHubX-*  —— 固定直链,每版覆盖 → no-cache,下载页/分发用
-      # 注:自动升级仍走 latest.json 的版本化 url(签名匹配),与此处直链互不影响。
-      - name: Upload installers to R2 (download/ + latest/)
-        # 仅正式版推 R2(生产分发 + updater 通道);预发(-rc)只构建+建 GitHub 预发布,不碰线上
-        if: ${{ env.R2_CONFIGURED == 'true' && steps.meta.outputs.prerelease == 'false' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AWS_ACCESS_KEY_ID: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_ACCESS_KEY_ID_PROD || secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_SECRET_ACCESS_KEY_PROD || secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ steps.meta.outputs.channel == 'prod' && secrets.R2_BUCKET_PROD || secrets.R2_BUCKET }}
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          TAG: ${{ steps.meta.outputs.tag }}
-        run: |
-          mkdir -p inst
-          gh release download "$TAG" --dir inst --pattern '*.dmg' --pattern '*-setup.exe' || true
-          put() { # $1 local  $2 r2-key  $3 content-type  $4 cache-control
-            aws s3 cp "$1" "s3://${R2_BUCKET}/$2" --endpoint-url "$R2_ENDPOINT" \
-              --content-type "$3" --cache-control "$4"
-          }
-          DMG='application/x-apple-diskimage'; EXE='application/vnd.microsoft.portable-executable'
-          IMM='public, max-age=31536000, immutable'
-          # 按架构子串归类(产物名沿 CVR 约定:_aarch64.dmg / _x64.dmg / _x64-setup.exe / _arm64-setup.exe)
-          MAC_ARM=$(ls inst/*aarch64*.dmg 2>/dev/null | head -1)
-          MAC_X64=$(ls inst/*_x64.dmg 2>/dev/null | head -1)
-          WIN_X64=$(ls inst/*x64-setup.exe 2>/dev/null | head -1)
-          WIN_ARM=$(ls inst/*arm64-setup.exe 2>/dev/null | head -1)
-          arch_put() { # $1 local  $2 latest 固定名  $3 ctype
-            [ -z "$1" ] && { echo "::warning::missing installer for $2"; return; }
-            put "$1" "download/${TAG}/$(basename "$1")" "$3" "$IMM"   # 版本化归档
-            put "$1" "download/latest/$2" "$3" 'no-cache'             # 架构固定直链
-          }
-          arch_put "$MAC_ARM" "NextHubX-mac-aarch64.dmg" "$DMG"
-          arch_put "$MAC_X64" "NextHubX-mac-x64.dmg"   "$DMG"
-          arch_put "$WIN_X64" "NextHubX-win-x64.exe"   "$EXE"
-          arch_put "$WIN_ARM" "NextHubX-win-arm64.exe" "$EXE"
-          # 向后兼容旧固定名(指向主流架构:mac→aarch64, win→x64)
-          [ -n "$MAC_ARM" ] && put "$MAC_ARM" "download/latest/NextHubX-mac.dmg" "$DMG" 'no-cache'
-          [ -n "$WIN_X64" ] && put "$WIN_X64" "download/latest/NextHubX-win.exe" "$EXE" 'no-cache'
-          echo "Installers synced to R2: download/${TAG}/ + download/latest/ (4 arch)"
 
       - name: Skipped R2 upload (secrets not set)
         if: ${{ env.R2_CONFIGURED != 'true' }}
