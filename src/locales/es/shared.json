@@ -99,6 +99,7 @@
         "failed": "Error de validación de la configuración de la suscripción. Compruebe el archivo de configuración de la suscripción. Los cambios se han deshecho. Detalles del error: ",
         "bootFailed": "Error de validación de la configuración de la suscripción de arranque. Se ha iniciado con la configuración predeterminada. Compruebe el archivo de configuración de la suscripción. Detalles del error: ",
         "coreChangeFailed": "Error de validación de la configuración al cambiar el núcleo. Se ha iniciado con la configuración predeterminada. Compruebe el archivo de configuración de la suscripción. Detalles del error: ",
+        "appControlBlocked": "Windows Smart App Control blocked the proxy core, so the default configuration was used. This is not a subscription problem — turn off Smart App Control (Windows Security → App & browser control → Smart App Control) or allowlist NextHubX, then try again. Details:",
         "processTerminated": "Proceso de validación terminado"
       },
       "script": {

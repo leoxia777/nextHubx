@@ -99,6 +99,7 @@
         "failed": "プロファイル設定の検証に失敗しました。プロファイル設定ファイルを確認してください。変更は取り消されました。エラー詳細：",
         "bootFailed": "起動時のプロファイル設定の検証に失敗しました。デフォルト設定で起動しました。プロファイル設定ファイルを確認してください。エラー詳細：",
         "coreChangeFailed": "コアを切り替える際の設定検証に失敗しました。デフォルト設定で起動しました。プロファイル設定ファイルを確認してください。エラー詳細：",
+        "appControlBlocked": "Windows Smart App Control blocked the proxy core, so the default configuration was used. This is not a subscription problem — turn off Smart App Control (Windows Security → App & browser control → Smart App Control) or allowlist NextHubX, then try again. Details:",
         "processTerminated": "検証プロセスが中断されました。"
       },
       "script": {

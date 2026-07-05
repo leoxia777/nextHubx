@@ -99,6 +99,7 @@
         "failed": "Ошибка проверки конфигурации подписки, проверьте файл конфигурации, изменения отменены, ошибка:",
         "bootFailed": "Ошибка проверки конфигурации при запуске, используется конфигурация по умолчанию, проверьте файл конфигурации, ошибка:",
         "coreChangeFailed": "Ошибка проверки конфигурации при смене ядра, используется конфигурация по умолчанию, проверьте файл конфигурации, ошибка:",
+        "appControlBlocked": "Windows Smart App Control blocked the proxy core, so the default configuration was used. This is not a subscription problem — turn off Smart App Control (Windows Security → App & browser control → Smart App Control) or allowlist NextHubX, then try again. Details:",
         "processTerminated": "Процесс проверки прерван"
       },
       "script": {

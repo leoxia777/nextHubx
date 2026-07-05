@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 
 import { BasePage } from '@/components/base'
 import { useSystemState } from '@/hooks/use-system-state'
+import { isAppControlBlocked } from '@/pages/_layout/utils/notification-handlers'
 import { isServiceAvailable } from '@/services/cmds'
 import { ActivationInvalidError, activate } from '@/services/nexthubx-api'
 import { importAndActivateProfile } from '@/services/nexthubx-profile'
@@ -46,7 +47,15 @@ const NexthubxActivatePage = () => {
         )
       } catch (err) {
         console.error('[nexthubx] import profile failed', err)
-        showNotice.error('nexthubx.activate.feedback.configError')
+        const detail = err instanceof Error ? err.message : String(err)
+        if (isAppControlBlocked(detail)) {
+          showNotice.error(
+            'shared.feedback.validation.config.appControlBlocked',
+            detail,
+          )
+        } else {
+          showNotice.error('nexthubx.activate.feedback.configError')
+        }
         return
       }
 

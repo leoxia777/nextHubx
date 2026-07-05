@@ -99,6 +99,7 @@
         "failed": "Subscription configuration validation failed. Please check the subscription configuration file; modifications have been rolled back.",
         "bootFailed": "Boot subscription configuration validation failed. Started with the default configuration; please check the subscription configuration file.",
         "coreChangeFailed": "Configuration validation failed when switching the kernel. Started with the default configuration; please check the subscription configuration file.",
+        "appControlBlocked": "Windows Smart App Control blocked the proxy core, so the default configuration was used. This is not a subscription problem — turn off Smart App Control (Windows Security → App & browser control → Smart App Control) or allowlist NextHubX, then try again. Details:",
         "processTerminated": "The validation process has been terminated."
       },
       "script": {

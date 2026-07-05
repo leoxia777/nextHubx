@@ -99,6 +99,7 @@
         "failed": "Язылу көйләү тикшерүе уңышсыз, көйләү файлын тикшерегез, үзгәрешләр кире кайтарылды, хата:",
         "bootFailed": "Йөкләү вакытында көйләү тикшерүе уңышсыз, стандарт көйләү кулланылды, көйләү файлын тикшерегез, хата:",
         "coreChangeFailed": "Ядро алыштырганда көйләү тикшерүе уңышсыз, стандарт көйләү кулланылды, көйләү файлын тикшерегез, хата:",
+        "appControlBlocked": "Windows Smart App Control blocked the proxy core, so the default configuration was used. This is not a subscription problem — turn off Smart App Control (Windows Security → App & browser control → Smart App Control) or allowlist NextHubX, then try again. Details:",
         "processTerminated": "Тикшерү процессы туктатылды"
       },
       "script": {

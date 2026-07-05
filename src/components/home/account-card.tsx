@@ -39,6 +39,7 @@ import {
 import { useServiceInstaller } from '@/hooks/use-service-installer'
 import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
+import { isAppControlBlocked } from '@/pages/_layout/utils/notification-handlers'
 import {
   isServiceAvailable,
   restartCore,
@@ -407,7 +408,15 @@ export const AccountCard = () => {
       } catch (err) {
         console.error('[nexthubx] import profile failed', err)
         void nxDebug('importProfile.fail', errInfo(err))
-        showNotice.error('nexthubx.activate.feedback.configError')
+        const detail = err instanceof Error ? err.message : String(err)
+        if (isAppControlBlocked(detail)) {
+          showNotice.error(
+            'shared.feedback.validation.config.appControlBlocked',
+            detail,
+          )
+        } else {
+          showNotice.error('nexthubx.activate.feedback.configError')
+        }
         return
       }
 

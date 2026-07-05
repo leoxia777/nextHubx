@@ -60,6 +60,25 @@
         "exitMismatch": "TUN may not be active or is preempted. Restart the core / stop conflicting Clash Verge, then retry."
       }
     },
+    "tunHealth": {
+      "title": "Network Protection (TUN)",
+      "status": {
+        "running": "TUN running — traffic is protected",
+        "notReady": "TUN not ready — background service required",
+        "leak": "TUN is enabled but not actually running",
+        "off": "TUN is off"
+      },
+      "desc": {
+        "running": "A TUN adapter is detected and working.",
+        "notReady": "TUN needs the background service. Install & authorize it before activating.",
+        "leak": "TUN is enabled but no TUN adapter was detected — your traffic may be going out directly and unprotected. Try restarting the app or repairing the service.",
+        "off": "TUN turns on automatically after you activate your account."
+      },
+      "action": {
+        "installService": "Install service / authorize",
+        "installing": "Installing…"
+      }
+    },
     "proxyTun": {
       "status": {
         "systemProxyEnabled": "시스템 프록시가 활성화되었습니다. 애플리케이션이 프록시를 통해 네트워크에 접근합니다",

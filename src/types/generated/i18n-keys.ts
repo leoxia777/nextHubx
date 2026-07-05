@@ -919,6 +919,7 @@ export const translationKeys = [
   'shared.feedback.validation.config.failed',
   'shared.feedback.validation.config.bootFailed',
   'shared.feedback.validation.config.coreChangeFailed',
+  'shared.feedback.validation.config.appControlBlocked',
   'shared.feedback.validation.config.processTerminated',
   'shared.feedback.validation.script.syntaxError',
   'shared.feedback.validation.script.missingMain',

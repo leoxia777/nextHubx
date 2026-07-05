@@ -14,6 +14,9 @@ notifications:
     title: TUN 모드
     'on': TUN mode has been enabled.
     'off': TUN mode has been disabled.
+  tunNotRunning:
+    title: TUN Protection Not Active
+    body: TUN is enabled but not actually running — your traffic may be unprotected. Open NextHubX to fix it.
   lightweightModeEntered:
     title: 경량 모드
     body: 경량 모드에 진입했습니다.

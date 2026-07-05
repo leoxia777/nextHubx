@@ -99,6 +99,7 @@
         "failed": "訂閱配置校驗失敗，請檢查訂閱配置文件，變更已撤銷，錯誤詳情：",
         "bootFailed": "啟動訂閱配置校驗失敗，已使用預設配置啟動；請檢查訂閱配置文件，錯誤詳情：",
         "coreChangeFailed": "切換內核時配置校驗失敗，已使用預設配置啟動；請檢查訂閱配置文件，錯誤詳情：",
+        "appControlBlocked": "Windows 智慧型應用程式控制(Smart App Control)攔截了代理核心，已回退預設配置；這不是訂閱問題。請在「Windows 安全性 → 應用程式與瀏覽器控制 → 智慧型應用程式控制」中關閉它，或將 NextHubX 加入白名單後重試。錯誤詳情：",
         "processTerminated": "驗證程序被終止"
       },
       "script": {

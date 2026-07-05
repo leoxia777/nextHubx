@@ -99,6 +99,7 @@
         "failed": "订阅配置校验失败，请检查订阅配置文件，变更已撤销，错误详情：",
         "bootFailed": "启动订阅配置校验失败，已使用默认配置启动；请检查订阅配置文件，错误详情：",
         "coreChangeFailed": "切换内核时配置校验失败，已使用默认配置启动；请检查订阅配置文件，错误详情：",
+        "appControlBlocked": "Windows 智能应用控制(Smart App Control)拦截了代理核心，已回退默认配置；这不是订阅问题。请在「Windows 安全中心 → 应用和浏览器控制 → 智能应用控制」中关闭它，或将 NextHubX 加入白名单后重试。错误详情：",
         "processTerminated": "验证进程被终止"
       },
       "script": {

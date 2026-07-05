@@ -1490,6 +1490,7 @@ export interface TranslationResources {
         }
         validation: {
           config: {
+            appControlBlocked: string
             bootFailed: string
             coreChangeFailed: string
             failed: string

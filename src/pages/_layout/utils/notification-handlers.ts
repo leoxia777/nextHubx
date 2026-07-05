@@ -3,12 +3,31 @@ import { showNotice } from '@/services/notice-service'
 type NavigateFunction = (path: string, options?: any) => void
 type TranslateFunction = (key: string) => string
 
+// Windows 智能应用控制(Smart App Control)/ 应用控制策略拦截未签名的代理核心时,
+// 底层报 "os error 4551 / 应用程序控制策略已阻止此文件"。这类失败与订阅配置无关,
+// 需给出针对性提示,避免误导用户去排查订阅文件。
+export const isAppControlBlocked = (msg: string): boolean => {
+  const m = (msg ?? '').toLowerCase()
+  return (
+    m.includes('os error 4551') ||
+    m.includes('application control') ||
+    (msg ?? '').includes('应用程序控制策略')
+  )
+}
+
 export const handleNoticeMessage = (
   status: string,
   msg: string,
   t: TranslateFunction,
   navigate: NavigateFunction,
 ) => {
+  // config_validate 各分支若命中应用控制拦截,统一改用针对性文案。
+  const appBlocked = isAppControlBlocked(msg)
+  const configValidateKey = (fallback: string) =>
+    appBlocked
+      ? 'shared.feedback.validation.config.appControlBlocked'
+      : fallback
+
   const handlers: Record<string, () => void> = {
     'import_sub_url::ok': () => {
       // 空 msg 传入，我们不希望导致 后端-前端-后端 死循环，这里只做提醒。
@@ -37,18 +56,27 @@ export const handleNoticeMessage = (
     'reactivate_profiles::error': () => showNotice.error(msg),
     update_failed: () => showNotice.error(msg),
     'config_validate::boot_error': () =>
-      showNotice.error('shared.feedback.validation.config.bootFailed', msg),
+      showNotice.error(
+        configValidateKey('shared.feedback.validation.config.bootFailed'),
+        msg,
+      ),
     'config_validate::core_change': () =>
       showNotice.error(
-        'shared.feedback.validation.config.coreChangeFailed',
+        configValidateKey('shared.feedback.validation.config.coreChangeFailed'),
         msg,
       ),
     'config_validate::error': () =>
-      showNotice.error('shared.feedback.validation.config.failed', msg),
+      showNotice.error(
+        configValidateKey('shared.feedback.validation.config.failed'),
+        msg,
+      ),
     'config_validate::process_terminated': () =>
       showNotice.error('shared.feedback.validation.config.processTerminated'),
     'config_validate::stdout_error': () =>
-      showNotice.error('shared.feedback.validation.config.failed', msg),
+      showNotice.error(
+        configValidateKey('shared.feedback.validation.config.failed'),
+        msg,
+      ),
     'config_validate::script_error': () =>
       showNotice.error('shared.feedback.validation.script.fileError', msg),
     'config_validate::script_syntax_error': () =>
