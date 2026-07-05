@@ -80,10 +80,38 @@ jobs:
           fi
           echo "OK: $SEMVER_TAG == $EXPECTED (channel=${{ steps.chan.outputs.channel }})"
 
-  # ── 1. Build + sign + create a draft GitHub Release with bundles + .sig ───────
+  # ── 0b. Pre-create ONE draft release; matrix jobs upload into it (releaseId) ──
+  #     修并发竞态:此前每个 matrix job 各用 tagName+releaseDraft「找不到就建」,而 GitHub
+  #     API 按 tag 查不到 draft → 并行 job 各建各的/互相冲掉 asset(v0.5.1 掉了 x64/mac-x64)。
+  #     改为:先建一个 draft、输出 release_id;build 各 job 用 releaseId 只上传、不再建 → 零竞态。
+  create-release:
+    name: Create draft release
+    needs: [check-version]
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.mk.outputs.release_id }}
+    steps:
+      - name: Create (or reuse) draft release
+        id: mk
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ contains(github.ref_name, '-rc') }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            PRE=""; [ "$PRERELEASE" = "true" ] && PRE="--prerelease"
+            gh release create "$TAG" --draft $PRE --title "NextHubX $TAG" --notes "NextHubX $TAG"
+          fi
+          REL_ID=$(gh release view "$TAG" --json databaseId --jq .databaseId)
+          [ -n "$REL_ID" ] || { echo "::error::could not resolve release id for $TAG"; exit 1; }
+          echo "release_id=$REL_ID" >> "$GITHUB_OUTPUT"
+          echo "draft release id=$REL_ID"
+
+  # ── 1. Build + sign + upload bundles + .sig into the pre-created draft ────────
   build:
     name: Build (${{ matrix.label }})
-    needs: [check-version]
+    needs: [check-version, create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -161,11 +189,8 @@ jobs:
           #    (same as Clash Verge). Users bypass Gatekeeper/SmartScreen on first
           #    launch — see docs/RELEASE.md. updater minisign above is unaffected.
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'NextHubX ${{ github.ref_name }}'
-          releaseBody: 'NextHubX ${{ github.ref_name }}'
-          releaseDraft: true
-          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          # 上传到预建的 draft release(releaseId),不再自行创建 → 消除并行 matrix 的建/冲竞态。
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
           # We build latest.json ourselves (per-target) in the publish job, so the
