@@ -37,18 +37,36 @@ pub struct TunRuntimeStatus {
 pub fn tun_adapter_up() -> bool {
     use network_interface::{Addr, NetworkInterface, NetworkInterfaceConfig as _};
 
-    let Ok(interfaces) = NetworkInterface::show() else {
-        return false;
-    };
-    interfaces.iter().any(|iface| {
-        iface.addr.iter().any(|addr| match addr {
-            Addr::V4(v4) => {
-                let o = v4.ip.octets();
-                o[0] == 198 && o[1] == 18
+    if let Ok(interfaces) = NetworkInterface::show() {
+        let found = interfaces.iter().any(|iface| {
+            iface.addr.iter().any(|addr| match addr {
+                Addr::V4(v4) => {
+                    let o = v4.ip.octets();
+                    o[0] == 198 && o[1] == 18
+                }
+                _ => false,
+            })
+        });
+        if found {
+            return true;
+        }
+    }
+
+    // macOS 兜底:`network-interface` crate 对 utun 这种点对点(POINTOPOINT)接口**漏报 inet 地址**
+    // (实测 `utun7: inet 198.18.0.1` 存在,但 crate 枚举不到)→ 会把真在跑的 TUN 误判成「未运行」。
+    // 直接读 `ifconfig` 找 `inet 198.18.` 兜一遍(= 注释里说的手动 ifconfig 的程序化版)。
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(out) = std::process::Command::new("/sbin/ifconfig").output() {
+            if let Ok(text) = String::from_utf8(out.stdout) {
+                return text
+                    .lines()
+                    .any(|line| line.trim_start().starts_with("inet 198.18."));
             }
-            _ => false,
-        })
-    })
+        }
+    }
+
+    false
 }
 
 /// 计算 TUN 真态(命令与后端周期通知共用)。
