@@ -158,7 +158,8 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
       showNotice.error('settings.modals.update.messages.portableError')
       return
     }
-    if (!updateInfo?.body) return
+    // 只要有可用更新即可下载安装;发布说明(body)为空不应卡住更新(否则「更新」按钮点了没反应)。
+    if (!updateInfo) return
     if (breakChangeFlag) {
       showNotice.error('settings.modals.update.messages.breakChangeError')
       return
