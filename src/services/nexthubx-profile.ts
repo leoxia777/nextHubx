@@ -7,6 +7,7 @@
  * 为避免每次同步都新建 profile 堆积:维护一个 nextHubx 托管 profile 的 uid——
  * 已存在则用 `saveProfileFile` 覆盖更新,不存在则 `createProfile` 后回查新 uid。
  */
+import { refetchIpInfoNow } from '@/hooks/use-ip-info'
 import {
   createProfile,
   enhanceProfiles,
@@ -86,6 +87,8 @@ export async function importAndActivateProfile(
 
   await patchProfilesConfig({ current: targetUid })
   await enhanceProfiles()
+  // 切换/更新了代理配置(可能换了出口)→ 立即重测出口 IP,不等倒计时。
+  void refetchIpInfoNow()
   return targetUid
 }
 
@@ -131,5 +134,7 @@ export async function importBootstrapProfile(yaml: string): Promise<string> {
 
   await patchProfilesConfig({ current: targetUid })
   await enhanceProfiles()
+  // 切换/更新了代理配置(可能换了出口)→ 立即重测出口 IP,不等倒计时。
+  void refetchIpInfoNow()
   return targetUid
 }
