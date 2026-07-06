@@ -38,6 +38,14 @@ export const IS_PROD_ENV = ((): boolean => {
   }
 })()
 
+/**
+ * 下载页(供更新弹窗「前往发布页」跳转 —— github release 页在国内被墙,用国内可达的
+ * R2/CF 下载页)。按环境:生产 download.nexthubx.io、测试 stage.download.nexthubx.io。
+ */
+export const NEXTHUBX_DOWNLOAD_BASE = IS_PROD_ENV
+  ? 'https://download.nexthubx.io'
+  : 'https://stage.download.nexthubx.io'
+
 const REQUEST_TIMEOUT_MS = 15_000
 
 /**

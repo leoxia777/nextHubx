@@ -12,6 +12,7 @@ import rehypeRaw from 'rehype-raw'
 import { BaseDialog, DialogRef } from '@/components/base'
 import { useUpdate } from '@/hooks/use-update'
 import { portableFlag } from '@/pages/_layout'
+import { NEXTHUBX_DOWNLOAD_BASE } from '@/services/nexthubx-api'
 import { showNotice } from '@/services/notice-service'
 import { useSetUpdateState, useUpdateState } from '@/services/states'
 import { resolveRemoteVersion } from '@/services/update'
@@ -240,9 +241,8 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
             size="small"
             sx={{ whiteSpace: 'nowrap' }}
             onClick={() => {
-              openUrl(
-                `https://github.com/leoxia777/nextHubx/releases/tag/v${remoteVersion}`,
-              )
+              // github release 页国内被墙 → 跳按环境的下载页(R2/CF,国内可达)。
+              openUrl(NEXTHUBX_DOWNLOAD_BASE)
             }}
           >
             {t('settings.modals.update.actions.goToRelease')}
