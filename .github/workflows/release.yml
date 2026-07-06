@@ -163,13 +163,14 @@ jobs:
           pnpm i
           pnpm run prebuild ${{ matrix.target }}
 
-      # 生产 channel:把烤进二进制的 updater endpoint 指向 pupdates(独立 R2 桶)。
-      # 测试 channel 保持 tauri.conf.json 里的默认 updates.nexthubx.io,不动。
+      # 生产 channel:把烤进二进制的 updater endpoint 从 stage.updates 串替成 pupdates(独立 R2 桶)。
+      # 测试 channel 保持 tauri.conf.json 里的默认 stage.updates.nexthubx.io(v0.5.3 起;此前是 updates.nexthubx.io)。
+      # 迁移原因:updates.nexthubx.io 要腾给生产,测试自更新频道改走 stage.updates(同测试 R2 桶,过渡期两域同桶)。
       - name: Point updater endpoint to prod channel
         if: needs.check-version.outputs.channel == 'prod'
         shell: bash
         run: |
-          node -e "const fs=require('fs');const f='src-tauri/tauri.conf.json';let s=fs.readFileSync(f,'utf8');const from='https://updates.nexthubx.io/{{target}}-{{arch}}/latest.json';const to='https://pupdates.nexthubx.io/{{target}}-{{arch}}/latest.json';if(!s.includes(from)){console.error('::error::updater endpoint default not found — cannot repoint to prod');process.exit(1);}fs.writeFileSync(f,s.split(from).join(to));const now=require('./'+f).plugins.updater.endpoints;if(!now.every(e=>e.includes('pupdates.nexthubx.io'))){console.error('::error::endpoint repoint failed',now);process.exit(1);}console.log('updater endpoint → pupdates.nexthubx.io:',now);"
+          node -e "const fs=require('fs');const f='src-tauri/tauri.conf.json';let s=fs.readFileSync(f,'utf8');const from='https://stage.updates.nexthubx.io/{{target}}-{{arch}}/latest.json';const to='https://pupdates.nexthubx.io/{{target}}-{{arch}}/latest.json';if(!s.includes(from)){console.error('::error::updater endpoint default not found — cannot repoint to prod');process.exit(1);}fs.writeFileSync(f,s.split(from).join(to));const now=require('./'+f).plugins.updater.endpoints;if(!now.every(e=>e.includes('pupdates.nexthubx.io'))){console.error('::error::endpoint repoint failed',now);process.exit(1);}console.log('updater endpoint → pupdates.nexthubx.io:',now);"
 
       - name: Tauri build (dmg/nsis + updater .sig, unsigned binaries)
         uses: tauri-apps/tauri-action@v0.6.2
