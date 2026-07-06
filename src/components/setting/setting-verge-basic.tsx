@@ -10,6 +10,7 @@ import { exportDiagnosticInfo, openLogsDir } from '@/services/cmds'
 import { supportedLanguages } from '@/services/i18n'
 import { ensureDeviceId, IS_PROD_ENV } from '@/services/nexthubx-api'
 import { showNotice } from '@/services/notice-service'
+import { queryClient } from '@/services/query-client'
 import { checkUpdateSafe as checkUpdate } from '@/services/update'
 import { version } from '@root/package.json'
 
@@ -69,6 +70,10 @@ const SettingVergeBasic = ({ onError }: Props) => {
     try {
       const info = await checkUpdate()
       updateLastCheckTime()
+      // 把这次新鲜的检查结果写回共享 ['checkUpdate'] 缓存 —— UpdateViewer 弹窗读的是同一 key
+      // (staleTime 1h),此前点「检查更新」只做了裸 check、没更新缓存 → 弹窗仍显示旧结果,
+      // 只有彻底重启才刷新。写回后弹窗立即拿到最新版本,无需重启。
+      queryClient.setQueryData(['checkUpdate'], info)
       if (!info?.available) {
         showNotice.success(
           'settings.components.verge.advanced.notifications.latestVersion',
