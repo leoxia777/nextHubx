@@ -163,24 +163,24 @@ jobs:
           pnpm i
           pnpm run prebuild ${{ matrix.target }}
 
-      # 生产 channel:把烤进二进制的 updater endpoint 从 stage.updates 串替成 pupdates(独立 R2 桶)。
-      # 测试 channel 保持 tauri.conf.json 里的默认 stage.updates.nexthubx.io(v0.5.3 起;此前是 updates.nexthubx.io)。
-      # 迁移原因:updates.nexthubx.io 要腾给生产,测试自更新频道改走 stage.updates(同测试 R2 桶,过渡期两域同桶)。
+      # 生产 channel:把烤进二进制的 updater endpoint 从 stage.updates 串替成 updates.nexthubx.io(生产自更新域,
+      # v0.5.6 起迁;原 pupdates 保留并行到 prod 机队升上来再退)。updates 已挂 prod 桶 nexthubx-updates-prod。
+      # 测试 channel 保持 tauri.conf.json 默认 stage.updates.nexthubx.io(v0.5.3 起)。
       - name: Point updater endpoint to prod channel
         if: needs.check-version.outputs.channel == 'prod'
         shell: bash
         run: |
-          node -e "const fs=require('fs');const f='src-tauri/tauri.conf.json';let s=fs.readFileSync(f,'utf8');const from='https://stage.updates.nexthubx.io/{{target}}-{{arch}}/latest.json';const to='https://pupdates.nexthubx.io/{{target}}-{{arch}}/latest.json';if(!s.includes(from)){console.error('::error::updater endpoint default not found — cannot repoint to prod');process.exit(1);}fs.writeFileSync(f,s.split(from).join(to));const now=require('./'+f).plugins.updater.endpoints;if(!now.every(e=>e.includes('pupdates.nexthubx.io'))){console.error('::error::endpoint repoint failed',now);process.exit(1);}console.log('updater endpoint → pupdates.nexthubx.io:',now);"
+          node -e "const fs=require('fs');const f='src-tauri/tauri.conf.json';let s=fs.readFileSync(f,'utf8');const from='https://stage.updates.nexthubx.io/{{target}}-{{arch}}/latest.json';const to='https://updates.nexthubx.io/{{target}}-{{arch}}/latest.json';if(!s.includes(from)){console.error('::error::updater endpoint default not found — cannot repoint to prod');process.exit(1);}fs.writeFileSync(f,s.split(from).join(to));const now=require('./'+f).plugins.updater.endpoints;if(!now.every(e=>e.includes('https://updates.nexthubx.io'))){console.error('::error::endpoint repoint failed',now);process.exit(1);}console.log('updater endpoint → updates.nexthubx.io:',now);"
 
       - name: Tauri build (dmg/nsis + updater .sig, unsigned binaries)
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ── 业务 API base(Vite 编译期烤进前端)。prod → pgate;测试(过渡中)→ stage.gate
-          #    (测试环境已迁 stage.*;经 updates 频道推,存量用户自更新迁到 stage.gate。updater 频道不动)。
+          # ── 业务 API base(Vite 编译期烤进前端)。prod → gate(v0.5.6 起迁干净域,原 pgate);测试 → stage.gate。
+          #    (Phase 2 已把 gate.nexthubx.io 挂到 .30 控制面;pgate 并行保留到 prod 机队迁完再退。)
           #    Vite 从进程环境读 VITE_*。
-          VITE_NEXTHUBX_API_BASE: ${{ needs.check-version.outputs.channel == 'prod' && 'https://pgate.nexthubx.io' || 'https://stage.gate.nexthubx.io' }}
+          VITE_NEXTHUBX_API_BASE: ${{ needs.check-version.outputs.channel == 'prod' && 'https://gate.nexthubx.io' || 'https://stage.gate.nexthubx.io' }}
           # ── Updater signing (minisign). From nexthubx-updater.key — see docs/RELEASE.md.
           #    Independent of OS code signing. If unset, .sig is not produced and
           #    auto-update won't verify; build still succeeds.
@@ -244,7 +244,7 @@ jobs:
           # updater 下载基址 = R2 公共域名(= latest.json 所在桶根),按渠道选 test/prod。
           # 测试改走 stage.updates(与 endpoint 一致):updates.nexthubx.io 要腾给生产,下载 URL 也须迁 stage.updates,
           # 否则客户端 poll stage.updates 但下载仍打 updates → 腾走后能看到更新却下不动(v0.5.6 起补齐)。
-          UPDATER_BASE: ${{ steps.meta.outputs.channel == 'prod' && 'https://pupdates.nexthubx.io' || 'https://stage.updates.nexthubx.io' }}
+          UPDATER_BASE: ${{ steps.meta.outputs.channel == 'prod' && 'https://updates.nexthubx.io' || 'https://stage.updates.nexthubx.io' }}
         run: |
           mkdir -p out
           # asset name → browser_download_url map for this tag's (draft) release
