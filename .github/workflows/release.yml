@@ -242,7 +242,9 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
           # updater 下载基址 = R2 公共域名(= latest.json 所在桶根),按渠道选 test/prod。
-          UPDATER_BASE: ${{ steps.meta.outputs.channel == 'prod' && 'https://pupdates.nexthubx.io' || 'https://updates.nexthubx.io' }}
+          # 测试改走 stage.updates(与 endpoint 一致):updates.nexthubx.io 要腾给生产,下载 URL 也须迁 stage.updates,
+          # 否则客户端 poll stage.updates 但下载仍打 updates → 腾走后能看到更新却下不动(v0.5.6 起补齐)。
+          UPDATER_BASE: ${{ steps.meta.outputs.channel == 'prod' && 'https://pupdates.nexthubx.io' || 'https://stage.updates.nexthubx.io' }}
         run: |
           mkdir -p out
           # asset name → browser_download_url map for this tag's (draft) release
