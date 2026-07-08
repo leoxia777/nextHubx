@@ -52,6 +52,14 @@
     .steps b { color: var(--accent); }
     code { background: var(--soft); padding: 1px 5px; font-size: 13px;
       font-family: "SF Mono", Menlo, Consolas, monospace; }
+    .cmd { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px;
+      background: var(--soft); border: 1px solid var(--line); padding: 8px 10px; overflow-x: auto; }
+    .cmd code { background: none; padding: 0; white-space: pre; flex: 1 1 auto; }
+    .copy { flex: none; cursor: pointer; font-size: 12px; padding: 4px 12px;
+      border: 1px solid var(--accent); background: #fff; color: var(--accent);
+      font-family: inherit; white-space: nowrap; }
+    .copy:hover { background: var(--accent); color: #fff; }
+    .copy.ok { background: #2e7d32; border-color: #2e7d32; color: #fff; }
     footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
       font-size: 12.5px; color: var(--sub); }
   </style>
@@ -94,7 +102,12 @@
         本客户端未做操作系统代码签名,首次打开会被系统拦截一次,按下列步骤放行即可(后续不再提示):
       </p>
       <ol class="steps">
-        <li><b>macOS</b>:打开 dmg 拖入「应用程序」后,在 Launchpad 或访达里<b>右键点击图标 → 打开</b>,弹窗再点「打开」。若提示「已损坏」,在「终端」执行 <code>xattr -dr com.apple.quarantine /Applications/NextHubX.app</code> 后再打开。</li>
+        <li><b>macOS</b>:打开 dmg 拖入「应用程序」后,在 Launchpad 或访达里<b>右键点击图标 → 打开</b>,弹窗再点「打开」。若提示「已损坏」,在「终端」执行下面这条命令后再打开(点「复制」,避免手动选择漏掉空格):
+          <div class="cmd">
+            <code id="xattrCmd">xattr -dr com.apple.quarantine /Applications/NextHubX.app</code>
+            <button type="button" class="copy" data-target="xattrCmd">复制</button>
+          </div>
+        </li>
         <li><b>Windows</b>:双击安装包若出现 SmartScreen 蓝色提示,点<b>「更多信息」→「仍要运行」</b>。</li>
       </ol>
     </section>
@@ -151,6 +164,31 @@
         .then(function (r) { return r.json(); })
         .then(function (j) { if (j && j.version) document.getElementById("ver").textContent = "最新版本 v" + j.version; })
         .catch(function () {});
+
+      // 一键复制:整串写入剪贴板,避免用户手选漏空格 / 富文本粘贴变形。
+      function copyFallback(text, done) {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        try { document.execCommand("copy"); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      var btns = document.querySelectorAll(".copy");
+      for (var bi = 0; bi < btns.length; bi++) {
+        btns[bi].addEventListener("click", function () {
+          var btn = this;
+          var el = document.getElementById(btn.getAttribute("data-target"));
+          if (!el) return;
+          var text = el.textContent || "";
+          function done() {
+            btn.textContent = "已复制"; btn.className = "copy ok";
+            setTimeout(function () { btn.textContent = "复制"; btn.className = "copy"; }, 1500);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () { copyFallback(text, done); });
+          } else { copyFallback(text, done); }
+        });
+      }
     })();
   </script>
 </body>
