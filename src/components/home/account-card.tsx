@@ -295,6 +295,14 @@ export const AccountCard = () => {
         try {
           await enableTun(true)
           void nxDebug('tun.enabled')
+          // 开 TUN 后重启核心,确保 utun 网卡真正建立 —— 否则首次激活常卡「TUN 已开启但未真正运行」
+          // (系统未检测到 TUN 网卡),需用户手动重开客户端才恢复。与 onForceStopCv 自愈同理。
+          try {
+            await restartCore()
+            void nxDebug('tun.restartCore.ok')
+          } catch (e) {
+            void nxDebug('tun.restartCore.fail', errInfo(e))
+          }
         } catch (err) {
           console.error('[nexthubx] enable tun failed', err)
           void nxDebug('tun.fail', errInfo(err))
