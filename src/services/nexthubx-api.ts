@@ -26,13 +26,15 @@ export const NEXTHUBX_API_BASE =
   import.meta.env.VITE_NEXTHUBX_API_BASE || 'https://gate.nexthubx.io'
 
 /**
- * 是否生产环境 —— 由编译期烤入的 API base 判定(生产 = pgate.*)。
+ * 是否生产环境 —— 由编译期烤入的 API base 判定。
+ * 生产 = `gate.*`(干净域,v0.5.6 起迁)或 `pgate.*`(过渡域并行期);测试 = `stage.gate.*`;本地/其它 = 非生产。
  * 生产客户端**不显示**环境标识(对客户干净);测试/staging/本地显示「测试环境」便于区分。
  * 环境隔离本身靠 API base + updater endpoint + 独立 R2 桶(编译期烤死),与版本号无关。
  */
 export const IS_PROD_ENV = ((): boolean => {
   try {
-    return new URL(NEXTHUBX_API_BASE).hostname.startsWith('pgate.')
+    const h = new URL(NEXTHUBX_API_BASE).hostname
+    return h.startsWith('gate.') || h.startsWith('pgate.')
   } catch {
     return false
   }
