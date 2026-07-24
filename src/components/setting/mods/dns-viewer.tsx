@@ -137,7 +137,8 @@ const DEFAULT_DNS_CONFIG = {
   'fake-ip-filter-mode': 'blacklist' as 'blacklist' | 'whitelist',
   'prefer-h3': false,
   'respect-rules': false,
-  'use-hosts': false,
+  // use-hosts 必须开:让订阅下发的「网关域名 → 真实入口 IP」钉死生效(防 DNS 污染)。
+  'use-hosts': true,
   'use-system-hosts': false,
   ipv6: true,
   'fake-ip-filter': [
@@ -151,6 +152,10 @@ const DEFAULT_DNS_CONFIG = {
     'localhost.ptlogin2.qq.com',
     '*.msftncsi.com',
     'www.msftconnecttest.com',
+    // 我方代理域名:一律解析真实 IP、不 fake(与后端 enforce_nexthubx_dns_guard 一致)。
+    '+.nexthubx.io',
+    '+.tualma.chat',
+    '+.hub4cc.com',
   ],
   'default-nameserver': [
     'system',

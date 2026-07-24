@@ -577,6 +577,59 @@ async fn apply_dns_settings(mut config: Mapping, enable_dns_settings: bool) -> M
     config
 }
 
+/// 强制注入我方 DNS 防护:自有代理域名一律钉真实入口 IP、不被 fake-ip / DNS 污染影响。
+///
+/// 背景(已发生真实客户事故):客户端「DNS 覆写」(`apply_dns_settings`)会用本地
+/// `dns_config.yaml` 覆盖订阅下发的 `hosts`/`dns`,把订阅里「网关域名 → 真实入口 IP」的钉死
+/// 抹掉、且 `fake-ip-filter` 不含我方域名 → 网关域名只能走内核 DNS 解析,遇 DNS 污染 / 并发抢答
+/// 会拿到假 IP 并被内核缓存,整条代理中断(gate 被解析到陌生 IP、TLS 证书不匹配 / 超时)。
+///
+/// 本函数在配置生成末尾兜底,做三件事(幂等、用户改 DNS 设置也盖不掉、存量升级即生效):
+///   ① 把订阅下发的 `hosts`(网关域名 → 真实入口 IP)并回,防被空/覆盖的 hosts 抹掉;
+///   ② `dns.use-hosts = true`(让上面的钉死真正生效);
+///   ③ `dns.fake-ip-filter` 幂等加入我方域名(自有域名解析真实 IP、不 fake)。
+fn enforce_nexthubx_dns_guard(mut config: Mapping, subscription_hosts: Option<Mapping>) -> Mapping {
+    // 我方代理相关域名后缀:一律解析真实 IP、可被 hosts 钉死、不 fake。
+    const GUARD_SUFFIXES: [&str; 3] = ["+.nexthubx.io", "+.tualma.chat", "+.hub4cc.com"];
+
+    // ① 并回订阅下发的 hosts 钉死(网关域名 → 真实入口 IP;订阅值优先,不被空 hosts 抹掉)。
+    if let Some(sub) = subscription_hosts
+        && !sub.is_empty()
+    {
+        let mut hosts = config
+            .get("hosts")
+            .and_then(|v| v.as_mapping())
+            .cloned()
+            .unwrap_or_default();
+        for (k, v) in sub {
+            hosts.insert(k, v);
+        }
+        config.insert("hosts".into(), hosts.into());
+    }
+
+    // ②③ 强制 dns.use-hosts=true,并把我方域名幂等加入 fake-ip-filter。
+    let mut dns = config
+        .get("dns")
+        .and_then(|v| v.as_mapping())
+        .cloned()
+        .unwrap_or_default();
+    dns.insert("use-hosts".into(), true.into());
+    let mut filter = dns
+        .get("fake-ip-filter")
+        .and_then(|v| v.as_sequence())
+        .cloned()
+        .unwrap_or_default();
+    for suffix in GUARD_SUFFIXES {
+        if !filter.iter().any(|x| x.as_str() == Some(suffix)) {
+            filter.push(suffix.to_string().into());
+        }
+    }
+    dns.insert("fake-ip-filter".into(), filter.into());
+    config.insert("dns".into(), dns.into());
+
+    config
+}
+
 /// Enhance mode
 /// 返回最终订阅、该订阅包含的键、和script执行的结果
 pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, ResultLog>)> {
@@ -599,6 +652,9 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
     // collect profile items
     let profile = collect_profile_items().await?;
     let config = profile.config;
+    // 订阅下发的 hosts(含「网关域名 → 真实入口 IP」的钉死)先留一份,后面兜底并回,
+    // 防止 DNS 覆写 / 默认配置把它抹掉(见 enforce_nexthubx_dns_guard)。
+    let subscription_hosts = config.get("hosts").and_then(|v| v.as_mapping()).cloned();
     let merge_item = profile.merge_item;
     let script_item = profile.script_item;
     let rules_item = profile.rules_item;
@@ -649,6 +705,8 @@ pub async fn enhance() -> Result<(Mapping, HashSet<String>, HashMap<String, Resu
 
     // dns settings
     config = apply_dns_settings(config, enable_dns_settings).await;
+    // 兜底:强制我方域名钉真实 IP、不被 fake-ip / DNS 污染影响(必须在 apply_dns_settings 之后)。
+    config = enforce_nexthubx_dns_guard(config, subscription_hosts);
 
     let mut exists_keys_set = HashSet::new();
     exists_keys_set.extend(exists_keys);
