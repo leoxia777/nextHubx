@@ -75,7 +75,11 @@ export const TunHealthCard = memo(() => {
       iconColor={color}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        <Typography variant="body1" color={`${color}.main`} sx={{ fontWeight: 600 }}>
+        <Typography
+          variant="body1"
+          color={`${color}.main`}
+          sx={{ fontWeight: 600 }}
+        >
           {t(`home.components.tunHealth.status.${state}`)}
         </Typography>
         <Typography variant="body2" color="text.secondary">
