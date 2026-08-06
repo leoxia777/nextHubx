@@ -48,7 +48,16 @@ pub fn resolve_setup_sync() {
 
 pub fn resolve_setup_async() {
     AsyncHandler::spawn(|| async {
-        logging!(info, Type::ClashVergeRev, "Version: {}", env!("CARGO_PKG_VERSION"));
+        // 打**发布版本号**(tauri.conf.json,如 0.5.9);括号里是 fork 上游 Clash Verge Rev 的
+        // 基线号(Cargo.toml 恒为 2.5.2)。原来只打后者,导致排障时从日志根本看不出客户装的是哪一版
+        // —— 2026-08-05 查自动更新失效时被这行误导过。
+        logging!(
+            info,
+            Type::ClashVergeRev,
+            "Version: {} (upstream base {})",
+            Handle::app_handle().package_info().version,
+            env!("CARGO_PKG_VERSION")
+        );
 
         init_startup_script().await;
         init_verge_config().await;

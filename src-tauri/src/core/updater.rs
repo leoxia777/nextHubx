@@ -134,7 +134,17 @@ impl SilentUpdater {
     /// attempt to install it immediately (before the main app initializes).
     /// Returns true if install was triggered (app should relaunch), false otherwise.
     pub async fn try_install_on_startup(&self, app_handle: &tauri::AppHandle) -> bool {
-        let current_version = env!("CARGO_PKG_VERSION");
+        // ⚠️ 必须用 tauri 的 app 版本(= tauri.conf.json / package.json 的发布号,如 0.5.9),
+        // **不能用 `env!("CARGO_PKG_VERSION")`** —— 那是 fork 上游 Clash Verge Rev 时的基线
+        // `2.5.2`(src-tauri/Cargo.toml 从未随发布号变更,且 network.rs 的 UA 刻意沿用它)。
+        // 用它比较会让 version_lte("0.5.8", "2.5.2") 恒真 → 每次启动都判定"缓存比当前旧"
+        // → 删掉刚下载好的 47MB 更新包 → **自动更新永远装不上**。
+        // 2026-08-05 从真实客户日志实锤(存量用户被困一个月:反复提示有新版、下载、下次启动悄悄删):
+        //   Update cache version (0.4.14) <= current (2.5.2), cleaning up
+        //   Update cache version (0.5.8)  <= current (2.5.2), cleaning up
+        // 检查阶段用的是 tauri 的 package_info(正确),所以只有这里错 → 表现成"检查到了却装不上"。
+        // 托盘显示版本时早已踩过同一个坑并改用 package_info(见 core/tray/mod.rs),此处漏改。
+        let current_version = app_handle.package_info().version.to_string();
 
         let meta = match Self::read_cache_meta() {
             Ok(meta) => meta,
@@ -143,7 +153,7 @@ impl SilentUpdater {
 
         let cached_version = &meta.version;
 
-        if version_lte(cached_version, current_version) {
+        if version_lte(cached_version, &current_version) {
             logging!(
                 info,
                 Type::System,
@@ -575,5 +585,21 @@ mod tests {
     fn test_cache_meta_missing_required_field() {
         let result = serde_json::from_str::<UpdateCacheMeta>(r#"{"version":"2.5.0"}"#);
         assert!(result.is_err()); // missing downloaded_at
+    }
+
+    // ─── 版本来源一致性(回归 2026-08-05「自动更新永远装不上」)────────────────
+    // updater 判「当前版本」用的是 **tauri.conf.json**(app_handle().package_info());
+    // release.yml 校验 tag 用的是 package.json。两者一漂移,自更新就会拿错版本比大小。
+    // 当年的根因是更早一步:误用了 src-tauri/Cargo.toml 的上游基线 2.5.2 当当前版本,
+    // 于是 version_lte("0.5.8", "2.5.2") 恒真 → 每次启动都把刚下载的更新包当"更旧"删掉。
+    #[test]
+    fn release_version_sources_agree() {
+        let tauri: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
+        let pkg: serde_json::Value = serde_json::from_str(include_str!("../../../package.json")).unwrap();
+        assert_eq!(
+            tauri["version"].as_str(),
+            pkg["version"].as_str(),
+            "tauri.conf.json 与 package.json 的 version 必须一致(updater 以前者为准)"
+        );
     }
 }
