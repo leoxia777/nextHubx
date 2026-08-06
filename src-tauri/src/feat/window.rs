@@ -69,6 +69,8 @@ pub async fn clean_async() -> bool {
     // 关闭 Tun 模式 + 停止核心服务
     let core_task = tokio::task::spawn(async {
         logging!(info, Type::System, "disable tun");
+        // 空窗期边界:TUN 即将撤下。此后到下次启动之间,任何还在跑的程序都直出真实 IP。
+        crate::core::claude_audit::record_event("准备停止:TUN 即将撤下(此后无保护)");
         let tun_enabled = Config::verge().await.data_arc().enable_tun_mode.unwrap_or(false);
         if tun_enabled {
             let disable_tun = serde_json::json!({ "tun": { "enable": false } });
