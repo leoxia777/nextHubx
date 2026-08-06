@@ -23,6 +23,19 @@ use crate::{
     utils::dirs::{self, service_log_dir, sidecar_log_dir},
 };
 
+/// mihomo(内核)**连接日志**的独立预算 —— 不再跟 app 日志共用 `app_log_max_*`。
+///
+/// 原来两者都用 `app_log_max_size=128`(KB)× `app_log_max_count=8` → 连接日志总上限约 **1MB**。
+/// 实测 2026-08-04 那台客户机 58 分钟就写了约 800KB:出封号这种事后想回查,**连一小时都没有**。
+/// 这里给它 4MB × 15 = 最多 60MB(重度机约 3 天、轻度机数周),够覆盖"出事后隔一两天才来找我们"。
+///
+/// ⚠️ **服务模式下轮转是由 helper 服务那个独立二进制执行的**,客户端只能把这两个数字传过去
+/// (见 `service_writer_config`)—— 所以做不到"按天切文件",只能靠加大预算。真正按天归档、
+/// 且能留 90 天的是 `core/claude_audit.rs`(每天几十行的保护态日志),两者分工:
+/// 连接明细看这份(留几天,`grep -iE "claude|anthropic"` 即可),长期趋势看那份。
+const CORE_LOG_MAX_SIZE_KB: u64 = 4 * 1024;
+const CORE_LOG_MAX_FILES: usize = 15;
+
 pub struct Logger {
     handle: Arc<Mutex<Option<LoggerHandle>>>,
     sidecar_file_writer: Arc<RwLock<Option<FileLogWriter>>>,
@@ -191,8 +204,6 @@ impl Logger {
 
     fn generate_sidecar_writer(&self) -> Result<FileLogWriter> {
         let sidecar_log_dir = sidecar_log_dir()?;
-        let log_max_size = self.log_max_size.load(Ordering::SeqCst);
-        let log_max_count = self.log_max_count.load(Ordering::SeqCst);
         Ok(FileLogWriter::builder(
             FileSpec::default()
                 .directory(sidecar_log_dir)
@@ -201,12 +212,12 @@ impl Logger {
         )
         .format(clash_verge_logger::file_format_without_level)
         .rotate(
-            Criterion::Size(log_max_size * 1024),
+            Criterion::Size(CORE_LOG_MAX_SIZE_KB * 1024),
             flexi_logger::Naming::TimestampsCustomFormat {
                 current_infix: Some("latest"),
                 format: "%Y-%m-%d_%H-%M-%S",
             },
-            Cleanup::KeepLogFiles(log_max_count),
+            Cleanup::KeepLogFiles(CORE_LOG_MAX_FILES),
         )
         .try_build()?)
     }
@@ -224,12 +235,10 @@ impl Logger {
 
     pub fn service_writer_config(&self) -> Result<WriterConfig> {
         let service_log_dir = dirs::path_to_str(&service_log_dir()?)?.into();
-        let log_max_size = self.log_max_size.load(Ordering::SeqCst);
-        let log_max_count = self.log_max_count.load(Ordering::SeqCst);
         let writer_config = WriterConfig {
             directory: service_log_dir,
-            max_log_size: log_max_size * 1024,
-            max_log_files: log_max_count,
+            max_log_size: CORE_LOG_MAX_SIZE_KB * 1024,
+            max_log_files: CORE_LOG_MAX_FILES,
         };
 
         Ok(writer_config)

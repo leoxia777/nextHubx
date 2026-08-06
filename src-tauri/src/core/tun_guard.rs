@@ -21,6 +21,7 @@ use tauri_plugin_clash_verge_sysinfo::is_current_app_handle_admin;
 
 use crate::cmd::system::tun_adapter_up;
 use crate::config::{Config, IVerge};
+use crate::core::claude_audit;
 use crate::core::handle::Handle;
 use crate::core::service;
 use crate::process::AsyncHandler;
@@ -100,20 +101,32 @@ pub async fn reconcile(immediate: bool) {
 
 /// 启动后台 reconcile + 谎报通知循环(`resolve_setup_async` 末尾调一次)。
 pub fn start() {
+    claude_audit::cleanup_old();
+    claude_audit::record_event("客户端启动");
     AsyncHandler::spawn(|| async move {
         tokio::time::sleep(STARTUP_GRACE).await;
         let mut ticker = tokio::time::interval(CHECK_INTERVAL);
         loop {
             ticker.tick().await;
             reconcile(false).await;
+            let should = should_tun_run().await;
+            let up = tun_adapter_up();
             // 谎报告警:该开(已激活+可用)却 OS 实测没起来 → 系统通知(窗口关/托盘也弹),跳变才发一次。
-            let bad = should_tun_run().await && !tun_adapter_up();
+            let bad = should && !up;
             if bad && !LAST_BAD.swap(true, Ordering::Relaxed) {
                 logging!(warn, Type::Core, "TUN should run but adapter is down — notifying");
                 notify_event(NotificationEvent::TunNotRunning).await;
             } else if !bad {
                 LAST_BAD.store(false, Ordering::Relaxed);
             }
+            // 顺带把保护态落进 Claude 审计日志(复用本周期,不另起定时器)。
+            // 见 core/claude_audit.rs:mihomo 连接日志既留不住、也拍不到"没走代理"的那段。
+            claude_audit::tick(&claude_audit::ProtectionSnapshot {
+                activated: is_activated(),
+                should_tun: should,
+                tun_up: up,
+                system_proxy: Config::verge().await.latest_arc().enable_system_proxy.unwrap_or(false),
+            });
         }
     });
 }

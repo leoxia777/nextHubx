@@ -405,6 +405,7 @@ pub fn run() {
             if !handle::Handle::global().is_exiting() {
                 feat::quit().await;
             }
+            crate::core::claude_audit::record_event("客户端已退出(无保护)");
             logging!(info, Type::System, "Application exited");
         }),
         #[allow(unused_variables)]
