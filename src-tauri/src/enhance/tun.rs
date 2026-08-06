@@ -94,9 +94,56 @@ pub fn use_tun(mut config: Mapping, enable: bool) -> Mapping {
         // 使后端真态探测(get_tun_runtime_status 查 198.18.x 网卡)**确定可判**,
         // 不依赖 mihomo 隐式默认(默认若变则探测会一直误判没起来)。
         append!(tun_val, "inet4-address", "198.18.0.1/30");
+
+        // TUN MTU 钉到 1500:缺省时 mihomo 用 9000,而 9000 在**虚拟机 / WSL 镜像模式**里是静默杀手。
+        // 2026-08-06 真实客户案例(Win11 + WSL2 `networkingMode=mirrored` + Tailscale + VMware,
+        // 多虚拟网卡):宿主 TUN 被镜像进 WSL 成 eth4(mtu 9000),WSL 直接按 MSS 8960 发包,
+        // 而真实链路是 Wi-Fi 1500 → **小包过、大包丢**:TCP 握手过、SSH banner(40B)过,
+        // 一到 KEX 交换主机密钥(1~3KB)就被吞 → 表现为「ssh 连上了却卡死」,而 Windows 原生侧
+        // 完全正常(那边 TCP 由 mihomo 用户态栈本地接下、再按真实链路重新分段,9000 的帧不上路)。
+        // 设置页 UI 的 mtu 默认值本来就是 1500(tun-viewer.tsx),所以这里补的是「用户从没打开过
+        // 该设置」的缺口;顺带把存量配置里 >1500 的值拉回来(纠正 mihomo 默认值落库的情况)。
+        // 只在缺省或过大时改,不动用户显式设的更小值(如 1400/1280)。
+        if let Some(mtu) = clamp_tun_mtu(tun_val.get(Value::from("mtu")).and_then(|v| v.as_u64())) {
+            revise!(tun_val, "mtu", mtu);
+        }
     }
 
     revise!(config, "tun", tun_val);
 
     config
+}
+
+/// 计算应写入的 TUN `mtu`:`None` = 保留现值不动,`Some(v)` = 写入 v。
+/// 规则:缺省(mihomo 默认 9000)或 >1500 → 钉到 1500;用户显式设的 ≤1500(如 1400/1280)保留。
+/// 抽成纯函数便于单测 —— `use_tun` 本身在 macOS 上会去改系统 DNS,不能在测试里调。
+const fn clamp_tun_mtu(current: Option<u64>) -> Option<u64> {
+    match current {
+        Some(m) if m <= 1500 => None,
+        _ => Some(1500),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 回归:2026-08-06 客户案例 —— WSL 镜像模式下宿主 TUN 的 mtu 9000 被 WSL 直接采用,
+    // 大包(SSH KEX)在真实 1500 链路上被丢,表现为「ssh 连上却卡死」。
+    #[test]
+    fn tun_mtu_absent_defaults_to_1500() {
+        assert_eq!(clamp_tun_mtu(None), Some(1500));
+    }
+
+    #[test]
+    fn tun_mtu_9000_is_clamped_to_1500() {
+        assert_eq!(clamp_tun_mtu(Some(9000)), Some(1500));
+    }
+
+    #[test]
+    fn tun_mtu_user_lower_value_is_kept() {
+        assert_eq!(clamp_tun_mtu(Some(1400)), None);
+        assert_eq!(clamp_tun_mtu(Some(1280)), None);
+        assert_eq!(clamp_tun_mtu(Some(1500)), None);
+    }
 }

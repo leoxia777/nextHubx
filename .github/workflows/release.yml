@@ -68,17 +68,27 @@ jobs:
             exit 1
           fi
 
-      - name: Verify tag == v<package.json version>
+      # tag 必须等于 package.json 版本,且 tauri.conf.json 必须与之一致。
+      # ⚠️ tauri.conf.json 才是 updater 判「当前版本」的来源(app_handle().package_info()),
+      # 两者漂移就会让自更新判错版本 —— 2026-08-05 定位到的「自动更新永远装不上」正是版本源
+      # 不一致(updater 误用了 Cargo.toml 的上游基线 2.5.2),故在此加硬门控。
+      # 注:src-tauri/Cargo.toml 的 version 刻意保持上游基线(network.rs 的 UA 沿用它),不参与校验。
+      - name: Verify tag == package.json == tauri.conf.json version
         env:
           SEMVER_TAG: v${{ steps.chan.outputs.version }}
         run: |
           PKG_VERSION=$(jq -r .version package.json)
+          TAURI_VERSION=$(jq -r .version src-tauri/tauri.conf.json)
           EXPECTED="v$PKG_VERSION"
           if [[ "$SEMVER_TAG" != "$EXPECTED" ]]; then
             echo "::error::Version mismatch: tag(semver)=$SEMVER_TAG package.json=$EXPECTED"
             exit 1
           fi
-          echo "OK: $SEMVER_TAG == $EXPECTED (channel=${{ steps.chan.outputs.channel }})"
+          if [[ "$TAURI_VERSION" != "$PKG_VERSION" ]]; then
+            echo "::error::Version mismatch: tauri.conf.json=$TAURI_VERSION package.json=$PKG_VERSION (updater 以 tauri.conf.json 为准,必须一致)"
+            exit 1
+          fi
+          echo "OK: $SEMVER_TAG == package.json == tauri.conf.json ($PKG_VERSION, channel=${{ steps.chan.outputs.channel }})"
 
   # ── 0b. Pre-create ONE draft release; matrix jobs upload into it (releaseId) ──
   #     修并发竞态:此前每个 matrix job 各用 tagName+releaseDraft「找不到就建」,而 GitHub

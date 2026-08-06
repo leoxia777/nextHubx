@@ -57,12 +57,10 @@ pub fn tun_adapter_up() -> bool {
     // 直接读 `ifconfig` 找 `inet 198.18.` 兜一遍(= 注释里说的手动 ifconfig 的程序化版)。
     #[cfg(target_os = "macos")]
     {
-        if let Ok(out) = std::process::Command::new("/sbin/ifconfig").output() {
-            if let Ok(text) = String::from_utf8(out.stdout) {
-                return text
-                    .lines()
-                    .any(|line| line.trim_start().starts_with("inet 198.18."));
-            }
+        if let Ok(out) = std::process::Command::new("/sbin/ifconfig").output()
+            && let Ok(text) = String::from_utf8(out.stdout)
+        {
+            return text.lines().any(|line| line.trim_start().starts_with("inet 198.18."));
         }
     }
 
